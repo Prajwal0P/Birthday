@@ -1,28 +1,118 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { gsap } from "gsap";
 import { images } from "../images.js";
 
-const Countdown = () => {
-  const [timeLeft, setTimeLeft] = useState({
-    days: 0,
-    hours: 0,
-    minutes: 0,
-    seconds: 0
+// Memoized TimeUnit component
+const TimeUnit = React.memo(({ label, value, color, unitRef, comfortMode, dramaticMode, rainbowMode, partyMode }) => {
+  const gradientMap = useMemo(() => ({
+    "from-purple-500 to-blue-500": "linear-gradient(135deg, #8b5cf6, #3b82f6)",
+    "from-pink-500 to-purple-500": "linear-gradient(135deg, #ec4899, #8b5cf6)",
+    "from-indigo-500 to-blue-400": "linear-gradient(135deg, #6366f1, #60a5fa)",
+    "from-green-400 to-teal-400": "linear-gradient(135deg, #34d399, #2dd4bf)"
+  }), []);
+
+  const backgroundStyle = useMemo(() => {
+    if (comfortMode) return `linear-gradient(135deg, #ffd6e0, #c4f0ff)`;
+    if (rainbowMode) return `linear-gradient(45deg, hsl(${Math.random() * 360}, 100%, 60%), hsl(${Math.random() * 360}, 100%, 60%))`;
+    if (partyMode) return `linear-gradient(135deg, hsl(${value * 15}, 80%, 60%), hsl(${value * 15 + 60}, 80%, 60%))`;
+    if (dramaticMode) return `linear-gradient(135deg, hsl(${Math.random() * 360}, 100%, 60%), hsl(${Math.random() * 360}, 100%, 60%))`;
+    return 'linear-gradient(135deg, rgba(17, 24, 39, 0.9), rgba(31, 41, 55, 0.9))';
+  }, [comfortMode, rainbowMode, partyMode, dramaticMode, value]);
+
+  const innerBackground = useMemo(() => {
+    if (comfortMode) return 'linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.8))';
+    if (dramaticMode) return `linear-gradient(135deg, hsla(${Math.random() * 360}, 100%, 50%, 0.8), hsla(${Math.random() * 360}, 100%, 50%, 0.8))`;
+    return 'linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(31, 41, 55, 0.95))';
+  }, [comfortMode, dramaticMode]);
+
+  const textStyle = useMemo(() => {
+    if (comfortMode) return 'linear-gradient(135deg, #ff6b6b, #4ecdc4)';
+    if (dramaticMode) return 'linear-gradient(135deg, #ffffff, #ffff00)';
+    return gradientMap[color];
+  }, [comfortMode, dramaticMode, color, gradientMap]);
+
+  return (
+    <div 
+      ref={unitRef}
+      className="time-unit relative flex flex-col items-center justify-center w-20 h-20 md:w-24 md:h-24 rounded-xl shadow-lg transform transition-all duration-300 hover:scale-105"
+      style={{
+        background: backgroundStyle,
+        backdropFilter: 'blur(12px)',
+        border: comfortMode 
+          ? '2px solid rgba(255, 255, 255, 0.5)' 
+          : dramaticMode 
+          ? '3px solid white' 
+          : '1px solid rgba(255, 255, 255, 0.2)'
+      }}
+    >
+      <div 
+        className="absolute inset-0 rounded-xl opacity-75"
+        style={{
+          background: comfortMode 
+            ? `linear-gradient(135deg, #ffb6c1, #87ceeb)`
+            : gradientMap[color],
+          filter: 'blur(8px)',
+          zIndex: -1
+        }}
+      />
+      
+      <div 
+        className="absolute inset-1 rounded-lg flex flex-col items-center justify-center"
+        style={{ background: innerBackground }}
+      >
+        <div 
+          className="text-2xl md:text-3xl font-bold mb-1"
+          style={{
+            background: textStyle,
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            textShadow: comfortMode ? '0 2px 4px rgba(0,0,0,0.1)' : dramaticMode ? '0 0 10px #ffff00' : 'none'
+          }}
+        >
+          {value.toString().padStart(2, '0')}
+        </div>
+        <div className={`text-xs font-medium uppercase tracking-wider ${
+          comfortMode ? 'text-pink-600' : dramaticMode ? 'text-white' : 'text-gray-300'
+        }`}>
+          {label}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+export default function Countdown() {
+  const navigate = useNavigate();
+
+  // State optimizations
+  const [state, setState] = useState({
+    timeLeft: { days: 0, hours: 0, minutes: 0, seconds: 0 },
+    isButtonEnabled: false,
+    showSurprise: false,
+    currentImage: "",
+    currentMessage: "",
+    easterEggsFound: [],
+    secretMode: false,
+    rainbowMode: false,
+    partyMode: false,
+    dramaticMode: false,
+    comfortMode: false,
+    fairyDustMode: false,
+    magicalMessages: [],
+    keySequence: [],
+    shakeCount: 0,
+    touchStart: null,
+    tapPattern: []
   });
 
-  const [isButtonEnabled, setIsButtonEnabled] = useState(false);
-  const [showSurprise, setShowSurprise] = useState(false);
-  const [currentImage, setCurrentImage] = useState("");
-  const [currentMessage, setCurrentMessage] = useState("");
-  const [easterEggsFound, setEasterEggsFound] = useState([]);
-  const [secretMode, setSecretMode] = useState(false);
-  const [rainbowMode, setRainbowMode] = useState(false);
-  const [partyMode, setPartyMode] = useState(false);
-  const [dramaticMode, setDramaticMode] = useState(false);
-  const [comfortMode, setComfortMode] = useState(false);
-  const [fairyDustMode, setFairyDustMode] = useState(false);
-  const [magicalMessages, setMagicalMessages] = useState([]);
+  // Helper to update state
+  const updateState = useCallback((updates) => {
+    setState(prev => ({ ...prev, ...updates }));
+  }, []);
 
+  // Refs
   const timerRef = useRef(null);
   const daysRef = useRef(null);
   const hoursRef = useRef(null);
@@ -30,46 +120,41 @@ const Countdown = () => {
   const secondsRef = useRef(null);
   const surpriseModalRef = useRef(null);
   const birthdayButtonRef = useRef(null);
-  const imageRef = useRef(null);
-  const buttonContainerRef = useRef(null);
   const fairyContainerRef = useRef(null);
-  
   const comfortModeActivated = useRef(false);
   const dramaticModeActivated = useRef(false);
-  const keySequence = useRef([]);
-  const shakeCount = useRef(0);
-  const tapPattern = useRef([]);
-  const touchStart = useRef(null);
+  const intervalsRef = useRef([]);
 
-  const funnyImages = images || [];
-
-  const easterEggs = {
-    konami_code: { name: "Magical Code! ✨", found: false },
-    birthday_typing: { name: "Birthday Magic 🎂", found: false },
-    shake_celebration: { name: "Sparkle Shake ✨", found: false },
-    rainbow_unicorn: { name: "Rainbow Unicorn Mode 🌈🦄", found: false },
-    disco_lights: { name: "Fairy Lights 💫", found: false },
-    cosmic_dance: { name: "Starlight Dance 🌟", found: false },
-    swipe_magic: { name: "Magic Swipe ✨", found: false },
+  // Memoized constants
+  const funnyImages = useMemo(() => images || [], []);
+  
+  const easterEggs = useMemo(() => ({
+    konami_code: { name: "Konami Code! ⬆️⬆️⬇️⬇️", found: false },
+    birthday_typing: { name: "Birthday Typing 🎂", found: false },
+    shake_celebration: { name: "Shake Celebration 📱", found: false },
+    rainbow_unicorn: { name: "Rainbow Unicorn Mode 🌈", found: false },
+    disco_lights: { name: "Disco Lights 💃", found: false },
+    cosmic_dance: { name: "Cosmic Dance 🌟", found: false },
+    swipe_magic: { name: "Swipe Magic ✨", found: false },
     comfort_mode: { name: "Comfort Mode 🛋️", found: false },
     fairy_dust: { name: "Fairy Dust Mode 🧚", found: false }
-  };
+  }), []);
 
-  const secretSequences = {
+  const secretSequences = useMemo(() => ({
     konami: ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA'],
     birthday: ['KeyB', 'KeyI', 'KeyR', 'KeyT', 'KeyH', 'KeyD', 'KeyA', 'KeyY'],
     comfort: ['KeyC', 'KeyO', 'KeyM', 'KeyF', 'KeyO', 'KeyR', 'KeyT']
-  };
+  }), []);
 
-  const tapPatterns = {
+  const tapPatterns = useMemo(() => ({
     rainbow: [1, 1, 2],
     disco: [2, 1, 2],
     cosmic: [1, 2, 1],
     comfort: [1, 1, 1],
     fairy: [2, 2, 1]
-  };
+  }), []);
 
-  const comfortingMessages = [
+  const comfortingMessages = useMemo(() => [
     "You're the most amazing little sister in the whole universe! 🌟",
     "Every moment brings us closer to your special magical day! ✨",
     "The birthday fairies are preparing something wonderful for you! 🧚‍♀️",
@@ -80,9 +165,9 @@ const Countdown = () => {
     "Your smile lights up our whole world! 😊",
     "You're growing into such an incredible person! 🌸",
     "The world is a better place because you're in it! 🌎"
-  ];
+  ], []);
 
-  const magicalEncouragements = [
+  const magicalEncouragements = useMemo(() => [
     "Almost there, superstar! Your special day is dawning! 🌅",
     "Can you feel the magic building? It's almost time! ✨",
     "The birthday fairies are putting the final touches! 🧚",
@@ -93,51 +178,35 @@ const Countdown = () => {
     "You've waited so patiently - your reward is here! 🎁",
     "The stars are dancing in anticipation! 💃",
     "This is it! Your moment to shine! ⭐"
-  ];
+  ], []);
 
-  const calculateTimeLeft = () => {
+  // Memoized calculations
+  const calculateTimeLeft = useCallback(() => {
+    const targetDate = new Date("2025-11-04T00:00:00");
     const now = new Date();
-    const currentYear = now.getFullYear();
-    const birthday = new Date(currentYear, 10, 4);
-    
-    if (now > birthday) {
-      birthday.setFullYear(currentYear + 1);
-    }
-    
-    const difference = birthday.getTime() - now.getTime();
-    
-    if (difference <= 0) {
+    const difference = targetDate - now;
+
+    if (difference > 0) {
+      return {
+        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((difference / 1000 / 60) % 60),
+        seconds: Math.floor((difference / 1000) % 60),
+      };
+    } else {
+      updateState({ isButtonEnabled: true });
       return { days: 0, hours: 0, minutes: 0, seconds: 0 };
     }
-    
-    return {
-      days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-      hours: Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-      minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
-      seconds: Math.floor((difference % (1000 * 60)) / 1000)
-    };
-  };
+  }, [updateState]);
 
-  const isLast3Hours = (timeLeft) => {
-    return timeLeft.days === 0 && timeLeft.hours < 3;
-  };
+  const isLast3Hours = useCallback((timeLeft) => 
+    timeLeft.days === 0 && timeLeft.hours < 3, []);
 
-  const isLastHour = (timeLeft) => {
-    return timeLeft.days === 0 && timeLeft.hours === 0 && timeLeft.minutes < 60;
-  };
+  const isLastHour = useCallback((timeLeft) => 
+    timeLeft.days === 0 && timeLeft.hours === 0 && timeLeft.minutes < 60, []);
 
-  const getRandomSurprise = () => {
-    if (funnyImages.length === 0) return { image: "", message: "You're amazing! 😊" };
-    const randomImageIndex = Math.floor(Math.random() * funnyImages.length);
-    const randomMessageIndex = Math.floor(Math.random() * comfortingMessages.length);
-    
-    return {
-      image: funnyImages[randomImageIndex],
-      message: comfortingMessages[randomMessageIndex]
-    };
-  };
-
-  const createFairyDust = () => {
+  // Optimized functions
+  const createFairyDust = useCallback(() => {
     if (!fairyContainerRef.current) return;
     const fairyContainer = fairyContainerRef.current;
     const fairyCount = 30;
@@ -168,13 +237,12 @@ const Countdown = () => {
         }
       });
     }
-  };
+  }, []);
 
-  const activateComfortMode = () => {
+  const activateComfortMode = useCallback(() => {
     if (comfortModeActivated.current) return;
     comfortModeActivated.current = true;
-    setComfortMode(true);
-    setDramaticMode(false);
+    updateState({ comfortMode: true, dramaticMode: false });
 
     gsap.to("body", {
       duration: 4,
@@ -182,15 +250,13 @@ const Countdown = () => {
       ease: "sine.inOut"
     });
 
-    if (timerRef.current) {
-      gsap.to(timerRef.current, {
-        duration: 3,
-        y: -10,
-        repeat: -1,
-        yoyo: true,
-        ease: "sine.inOut"
-      });
-    }
+    gsap.to(timerRef.current, {
+      duration: 3,
+      y: -10,
+      repeat: -1,
+      yoyo: true,
+      ease: "sine.inOut"
+    });
 
     gsap.to(".time-unit", {
       duration: 2,
@@ -213,17 +279,19 @@ const Countdown = () => {
         top: `${Math.random() * 70 + 15}%`,
         left: `${Math.random() * 70 + 15}%`
       };
-      setMagicalMessages(prev => [...prev.slice(-3), newMessage]);
+      updateState(prev => ({ 
+        magicalMessages: [...prev.magicalMessages.slice(-3), newMessage] 
+      }));
       messageIndex++;
     }, 8000);
 
-    return () => clearInterval(messageInterval);
-  };
+    intervalsRef.current.push(messageInterval);
+  }, [magicalEncouragements, updateState]);
 
-  const activateDramaticMode = () => {
+  const activateDramaticMode = useCallback(() => {
     if (dramaticModeActivated.current) return;
     dramaticModeActivated.current = true;
-    setDramaticMode(true);
+    updateState({ dramaticMode: true });
 
     gsap.to("body", {
       duration: 3,
@@ -233,15 +301,13 @@ const Countdown = () => {
       ease: "sine.inOut"
     });
 
-    if (timerRef.current) {
-      gsap.to(timerRef.current, {
-        duration: 1.5,
-        scale: 1.1,
-        repeat: -1,
-        yoyo: true,
-        ease: "sine.inOut"
-      });
-    }
+    gsap.to(timerRef.current, {
+      duration: 1.5,
+      scale: 1.1,
+      repeat: -1,
+      yoyo: true,
+      ease: "sine.inOut"
+    });
 
     gsap.to(".time-unit", {
       duration: 2,
@@ -252,15 +318,18 @@ const Countdown = () => {
       yoyo: true,
       ease: "sine.inOut"
     });
-  };
+  }, [updateState]);
 
-  const triggerEasterEgg = (eggName) => {
-    if (easterEggsFound.includes(eggName)) return;
-    setEasterEggsFound(prev => [...prev, eggName]);
+  const triggerEasterEgg = useCallback((eggName) => {
+    if (state.easterEggsFound.includes(eggName)) return;
     
-    switch(eggName) {
-      case 'konami_code':
-        setSecretMode(true);
+    updateState(prev => ({ 
+      easterEggsFound: [...prev.easterEggsFound, eggName] 
+    }));
+    
+    const eggAnimations = {
+      konami_code: () => {
+        updateState({ secretMode: true });
         createFairyDust();
         gsap.to(".time-unit", {
           duration: 1,
@@ -271,8 +340,8 @@ const Countdown = () => {
           repeat: 1,
           yoyo: true
         });
-        break;
-      case 'birthday_typing':
+      },
+      birthday_typing: () => {
         createFairyDust();
         gsap.to(".timer-container", {
           duration: 1,
@@ -282,22 +351,20 @@ const Countdown = () => {
           repeat: 2,
           ease: "power2.inOut"
         });
-        break;
-      case 'shake_celebration':
-        setPartyMode(true);
+      },
+      shake_celebration: () => {
+        updateState({ partyMode: true });
         createFairyDust();
-        if (timerRef.current) {
-          gsap.to(timerRef.current, {
-            duration: 0.2,
-            rotation: 5,
-            yoyo: true,
-            repeat: 3,
-            ease: "sine.inOut"
-          });
-        }
-        break;
-      case 'rainbow_unicorn':
-        setRainbowMode(true);
+        gsap.to(timerRef.current, {
+          duration: 0.2,
+          rotation: 5,
+          yoyo: true,
+          repeat: 3,
+          ease: "sine.inOut"
+        });
+      },
+      rainbow_unicorn: () => {
+        updateState({ rainbowMode: true });
         createFairyDust();
         gsap.to(".time-unit", {
           duration: 2,
@@ -306,20 +373,18 @@ const Countdown = () => {
           repeat: 2,
           yoyo: true
         });
-        break;
-      case 'disco_lights':
+      },
+      disco_lights: () => {
         createFairyDust();
-        if (timerRef.current) {
-          gsap.to(timerRef.current, {
-            duration: 0.5,
-            filter: "brightness(1.5)",
-            yoyo: true,
-            repeat: 3,
-            ease: "sine.inOut"
-          });
-        }
-        break;
-      case 'cosmic_dance':
+        gsap.to(timerRef.current, {
+          duration: 0.5,
+          filter: "brightness(1.5)",
+          yoyo: true,
+          repeat: 3,
+          ease: "sine.inOut"
+        });
+      },
+      cosmic_dance: () => {
         createFairyDust();
         gsap.to(".time-unit", {
           duration: 1,
@@ -329,8 +394,8 @@ const Countdown = () => {
           stagger: 0.1,
           ease: "elastic.out(1, 0.5)"
         });
-        break;
-      case 'swipe_magic':
+      },
+      swipe_magic: () => {
         createFairyDust();
         gsap.to(".floating-element", {
           duration: 2,
@@ -339,22 +404,27 @@ const Countdown = () => {
           stagger: 0.2,
           ease: "power2.out"
         });
-        break;
-      case 'comfort_mode':
-        setComfortMode(true);
+      },
+      comfort_mode: () => {
+        updateState({ comfortMode: true });
         createFairyDust();
         gsap.to("body", {
           duration: 2,
           background: "linear-gradient(135deg, #e0f7fa, #f8bbd0, #fff9c4)",
           ease: "sine.inOut"
         });
-        break;
-      case 'fairy_dust':
-        setFairyDustMode(true);
+      },
+      fairy_dust: () => {
+        updateState({ fairyDustMode: true });
         createFairyDust();
-        break;
+      }
+    };
+
+    if (eggAnimations[eggName]) {
+      eggAnimations[eggName]();
     }
 
+    // Show notification
     const notification = document.querySelector('.easter-egg-notification');
     if (notification) {
       gsap.to(notification, {
@@ -372,133 +442,123 @@ const Countdown = () => {
         }
       });
     }
-  };
+  }, [state.easterEggsFound, createFairyDust, updateState]);
 
-  const handleKeyPress = (event) => {
-    const newSequence = [...keySequence.current, event.code].slice(-10);
-    keySequence.current = newSequence;
+  // Event handlers - FIXED WITH event.preventDefault()
+  const handleKeyPress = useCallback((event) => {
+    const newSequence = [...state.keySequence, event.code].slice(-10);
+    updateState({ keySequence: newSequence });
     
     if (newSequence.join(',') === secretSequences.konami.join(',')) {
-      if (!easterEggsFound.includes('konami_code')) {
-        triggerEasterEgg('konami_code');
-      }
+      triggerEasterEgg('konami_code');
     }
-    
     if (newSequence.join(',') === secretSequences.birthday.join(',')) {
-      if (!easterEggsFound.includes('birthday_typing')) {
-        triggerEasterEgg('birthday_typing');
-      }
+      triggerEasterEgg('birthday_typing');
     }
-
     if (newSequence.join(',') === secretSequences.comfort.join(',')) {
-      if (!easterEggsFound.includes('comfort_mode')) {
-        triggerEasterEgg('comfort_mode');
-      }
+      triggerEasterEgg('comfort_mode');
     }
-  };
+  }, [state.keySequence, secretSequences, triggerEasterEgg, updateState]);
 
-  const handleShake = () => {
-    const newShakeCount = shakeCount.current + 1;
-    shakeCount.current = newShakeCount;
+  const handleShake = useCallback(() => {
+    const newShakeCount = state.shakeCount + 1;
+    updateState({ shakeCount: newShakeCount });
     
-    if (newShakeCount >= 3 && !easterEggsFound.includes('shake_celebration')) {
+    if (newShakeCount >= 3) {
       triggerEasterEgg('shake_celebration');
-      shakeCount.current = 0;
+      updateState({ shakeCount: 0 });
     }
     
-    setTimeout(() => {
-      shakeCount.current = 0;
-    }, 3000);
-  };
+    setTimeout(() => updateState({ shakeCount: 0 }), 3000);
+  }, [state.shakeCount, triggerEasterEgg, updateState]);
 
-  const handleTouchStart = (e) => {
-    touchStart.current = {
-      x: e.touches[0].clientX,
-      y: e.touches[0].clientY,
-      time: Date.now()
-    };
-  };
+  const handleTouchStart = useCallback((e) => {
+    updateState({
+      touchStart: {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        time: Date.now()
+      }
+    });
+  }, [updateState]);
 
-  const handleTouchEnd = (e) => {
-    if (!touchStart.current) return;
+  const handleTouchEnd = useCallback((e) => {
+    if (!state.touchStart) return;
     const touchEnd = {
       x: e.changedTouches[0].clientX,
       y: e.changedTouches[0].clientY,
       time: Date.now()
     };
     const swipeDistance = {
-      x: touchEnd.x - touchStart.current.x,
-      y: touchEnd.y - touchStart.current.y
+      x: touchEnd.x - state.touchStart.x,
+      y: touchEnd.y - state.touchStart.y
     };
-    const swipeTime = touchEnd.time - touchStart.current.time;
+    const swipeTime = touchEnd.time - state.touchStart.time;
 
     if (swipeTime < 500) {
       if (Math.abs(swipeDistance.x) > 50 && Math.abs(swipeDistance.y) < 50) {
-        if (swipeDistance.x > 0 && !easterEggsFound.includes('swipe_magic')) {
-          triggerEasterEgg('swipe_magic');
-        }
+        if (swipeDistance.x > 0) triggerEasterEgg('swipe_magic');
       }
-      
       if (Math.abs(swipeDistance.y) > 50 && Math.abs(swipeDistance.x) < 50) {
-        if (swipeDistance.y < 0 && !easterEggsFound.includes('rainbow_unicorn')) {
-          triggerEasterEgg('rainbow_unicorn');
-        } else if (swipeDistance.y > 0 && !easterEggsFound.includes('fairy_dust')) {
-          triggerEasterEgg('fairy_dust');
-        }
+        if (swipeDistance.y < 0) triggerEasterEgg('rainbow_unicorn');
+        else if (swipeDistance.y > 0) triggerEasterEgg('fairy_dust');
       }
     }
-    touchStart.current = null;
-  };
+    updateState({ touchStart: null });
+  }, [state.touchStart, triggerEasterEgg, updateState]);
 
-  const handleTap = (isLongPress = false) => {
+  const handleTap = useCallback((isLongPress = false) => {
     const tapType = isLongPress ? 2 : 1;
-    const newPattern = [...tapPattern.current, tapType].slice(-3);
-    tapPattern.current = newPattern;
+    const newPattern = [...state.tapPattern, tapType].slice(-3);
+    updateState({ tapPattern: newPattern });
 
-    if (newPattern.join(',') === tapPatterns.rainbow.join(',')) {
-      if (!easterEggsFound.includes('rainbow_unicorn')) {
-        triggerEasterEgg('rainbow_unicorn');
-      }
-    } else if (newPattern.join(',') === tapPatterns.disco.join(',')) {
-      if (!easterEggsFound.includes('disco_lights')) {
-        triggerEasterEgg('disco_lights');
-      }
-    } else if (newPattern.join(',') === tapPatterns.cosmic.join(',')) {
-      if (!easterEggsFound.includes('cosmic_dance')) {
-        triggerEasterEgg('cosmic_dance');
-      }
-    } else if (newPattern.join(',') === tapPatterns.comfort.join(',')) {
-      if (!easterEggsFound.includes('comfort_mode')) {
-        triggerEasterEgg('comfort_mode');
-      }
-    } else if (newPattern.join(',') === tapPatterns.fairy.join(',')) {
-      if (!easterEggsFound.includes('fairy_dust')) {
-        triggerEasterEgg('fairy_dust');
-      }
+    const patternString = newPattern.join(',');
+    if (patternString === tapPatterns.rainbow.join(',')) triggerEasterEgg('rainbow_unicorn');
+    else if (patternString === tapPatterns.disco.join(',')) triggerEasterEgg('disco_lights');
+    else if (patternString === tapPatterns.cosmic.join(',')) triggerEasterEgg('cosmic_dance');
+    else if (patternString === tapPatterns.comfort.join(',')) triggerEasterEgg('comfort_mode');
+    else if (patternString === tapPatterns.fairy.join(',')) triggerEasterEgg('fairy_dust');
+
+    setTimeout(() => updateState({ tapPattern: [] }), 2000);
+  }, [state.tapPattern, tapPatterns, triggerEasterEgg, updateState]);
+
+  const handleLongPress = useCallback(() => handleTap(true), [handleTap]);
+
+  const getRandomSurprise = useCallback(() => {
+    if (funnyImages.length === 0) return { image: "", message: "You're amazing! 😊" };
+    const randomImageIndex = Math.floor(Math.random() * funnyImages.length);
+    const randomMessageIndex = Math.floor(Math.random() * comfortingMessages.length);
+    
+    return {
+      image: funnyImages[randomImageIndex],
+      message: comfortingMessages[randomMessageIndex]
+    };
+  }, [funnyImages, comfortingMessages]);
+
+  // FIXED: Added event.preventDefault() to prevent page refresh
+  const redirectToBirthdayPage = useCallback((event) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
     }
+    navigate("/birthday-special");
+  }, [navigate]);
 
-    setTimeout(() => {
-      tapPattern.current = [];
-    }, 2000);
-  };
-
-  const handleLongPress = () => {
-    handleTap(true);
-  };
-
-  const redirectToBirthdayPage = () => {
-    window.location.href = "/birthday-special";
-  };
-
-  const handleSurpriseClick = () => {
-    if (isButtonEnabled) {
-      redirectToBirthdayPage();
+  // FIXED: Added event.preventDefault() to prevent page refresh
+  const handleSurpriseClick = useCallback((event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    if (state.isButtonEnabled) {
+      redirectToBirthdayPage(event);
       return;
     }
     const surprise = getRandomSurprise();
-    setCurrentImage(surprise.image);
-    setCurrentMessage(surprise.message);
-    setShowSurprise(true);
+    updateState({ 
+      currentImage: surprise.image,
+      currentMessage: surprise.message,
+      showSurprise: true
+    });
     
     if (surpriseModalRef.current) {
       gsap.fromTo(surpriseModalRef.current, 
@@ -506,25 +566,40 @@ const Countdown = () => {
         { scale: 1, opacity: 1, duration: 0.8, ease: "back.out(1.7)" }
       );
     }
-  };
+  }, [state.isButtonEnabled, getRandomSurprise, redirectToBirthdayPage, updateState]);
 
-  const closeSurpriseModal = () => {
+  // FIXED: Added event.preventDefault() to prevent page refresh
+  const closeSurpriseModal = useCallback((event) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     if (surpriseModalRef.current) {
       gsap.to(surpriseModalRef.current, {
         scale: 0,
         opacity: 0,
         duration: 0.3,
         ease: "power2.in",
-        onComplete: () => setShowSurprise(false)
+        onComplete: () => updateState({ showSurprise: false })
       });
     } else {
-      setShowSurprise(false);
+      updateState({ showSurprise: false });
     }
-  };
+  }, [updateState]);
 
+  // Main effects
   useEffect(() => {
-    setTimeLeft(calculateTimeLeft());
+    const timer = setInterval(() => {
+      const newTimeLeft = calculateTimeLeft();
+      updateState({ timeLeft: newTimeLeft });
+      
+      if (isLastHour(newTimeLeft) && !comfortModeActivated.current) activateComfortMode();
+      else if (isLast3Hours(newTimeLeft) && !dramaticModeActivated.current && !comfortModeActivated.current) activateDramaticMode();
+    }, 1000);
 
+    intervalsRef.current.push(timer);
+
+    // Initial animations
     if (timerRef.current) {
       gsap.fromTo(timerRef.current, 
         { opacity: 0, y: 50 },
@@ -548,74 +623,10 @@ const Countdown = () => {
       );
     }
 
-    const timer = setInterval(() => {
-      const newTimeLeft = calculateTimeLeft();
-      setTimeLeft(newTimeLeft);
-      
-      const lastHour = isLastHour(newTimeLeft);
-      const last3Hours = isLast3Hours(newTimeLeft);
-      
-      if (lastHour && !comfortModeActivated.current) {
-        activateComfortMode();
-      } else if (last3Hours && !dramaticModeActivated.current && !comfortModeActivated.current) {
-        activateDramaticMode();
-      }
-      
-      if (newTimeLeft.days === 0 && newTimeLeft.hours === 0 && 
-          newTimeLeft.minutes === 0 && newTimeLeft.seconds === 0) {
-        clearInterval(timer);
-        setIsButtonEnabled(true);
-        createFairyDust();
-        
-        gsap.to("body", {
-          duration: 3,
-          background: "linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #ffeaa7, #ff6b6b)",
-          repeat: -1,
-          yoyo: true
-        });
-
-        gsap.to(".time-unit", {
-          duration: 1,
-          scale: 1.3,
-          rotation: 360,
-          stagger: 0.1,
-          repeat: -1,
-          yoyo: true
-        });
-        
-        if (timerRef.current) {
-          gsap.to(timerRef.current, {
-            scale: 1.1,
-            duration: 0.8,
-            yoyo: true,
-            repeat: -1,
-            ease: "sine.inOut"
-          });
-        }
-
-        setTimeout(() => {
-          if (birthdayButtonRef.current) {
-            gsap.fromTo(birthdayButtonRef.current,
-              { opacity: 0, scale: 0, y: 50 },
-              { 
-                opacity: 1, 
-                scale: 1, 
-                y: 0, 
-                duration: 1.5, 
-                ease: "back.out(1.7)"
-              }
-            );
-          }
-        }, 1000);
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
+    // Event listeners
     window.addEventListener('keydown', handleKeyPress);
     
+    // Shake detection
     let lastAcceleration = { x: 0, y: 0, z: 0 };
     const handleDeviceMotion = (event) => {
       const acceleration = event.accelerationIncludingGravity;
@@ -623,33 +634,30 @@ const Countdown = () => {
       const deltaX = Math.abs(acceleration.x - lastAcceleration.x);
       const deltaY = Math.abs(acceleration.y - lastAcceleration.y);
       const deltaZ = Math.abs(acceleration.z - lastAcceleration.z);
-      if (deltaX + deltaY + deltaZ > 25) {
-        handleShake();
-      }
+      if (deltaX + deltaY + deltaZ > 25) handleShake();
       lastAcceleration = acceleration;
     };
     
-    if (window.DeviceMotionEvent) {
-      window.addEventListener('devicemotion', handleDeviceMotion);
-    }
+    if (window.DeviceMotionEvent) window.addEventListener('devicemotion', handleDeviceMotion);
 
+    // Tap detection
     let lastClickTime = 0;
     const handleDoubleClick = (event) => {
+      event.preventDefault();
       const currentTime = new Date().getTime();
-      if (currentTime - lastClickTime < 300) {
-        handleTap();
-      }
+      if (currentTime - lastClickTime < 300) handleTap();
       lastClickTime = currentTime;
     };
     
     document.addEventListener('click', handleDoubleClick);
 
     let pressTimer;
-    const handlePressStart = () => {
+    const handlePressStart = (event) => {
+      event.preventDefault();
       pressTimer = setTimeout(handleLongPress, 800);
     };
-    
-    const handlePressEnd = () => {
+    const handlePressEnd = (event) => {
+      event.preventDefault();
       clearTimeout(pressTimer);
     };
     
@@ -659,6 +667,8 @@ const Countdown = () => {
     document.addEventListener('touchend', handlePressEnd);
 
     return () => {
+      intervalsRef.current.forEach(interval => clearInterval(interval));
+      intervalsRef.current = [];
       window.removeEventListener('keydown', handleKeyPress);
       window.removeEventListener('devicemotion', handleDeviceMotion);
       document.removeEventListener('click', handleDoubleClick);
@@ -667,130 +677,63 @@ const Countdown = () => {
       document.removeEventListener('touchstart', handlePressStart);
       document.removeEventListener('touchend', handlePressEnd);
     };
-  }, []);
+  }, [calculateTimeLeft, isLastHour, isLast3Hours, activateComfortMode, activateDramaticMode, handleKeyPress, handleShake, handleTap, handleLongPress]);
 
+  // Birthday celebration effect
   useEffect(() => {
-    const timeUnits = [daysRef.current, hoursRef.current, minutesRef.current, secondsRef.current];
-    if (timeUnits.every(unit => unit !== null)) {
-      if (comfortMode) {
-        gsap.to(timeUnits, {
-          duration: 0.3,
-          scale: 1.1,
-          y: -5,
-          stagger: 0.1,
-          ease: "sine.out",
-          yoyo: true,
-          repeat: 1
-        });
-      } else if (dramaticMode) {
-        gsap.to(timeUnits, {
-          duration: 0.2,
-          scale: 1.2,
-          y: -10,
-          rotation: 5,
-          stagger: 0.05,
-          ease: "power2.out",
-          yoyo: true,
-          repeat: 1
-        });
-      } else {
-        gsap.to(timeUnits, {
-          scale: 1.05,
-          duration: 0.2,
-          yoyo: true,
-          repeat: 1,
-          ease: "power2.inOut"
-        });
-      }
+    if (state.isButtonEnabled) {
+      createFairyDust();
+      gsap.to("body", {
+        duration: 3,
+        background: "linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #ffeaa7, #ff6b6b)",
+        repeat: -1,
+        yoyo: true
+      });
+
+      gsap.to(".time-unit", {
+        duration: 1,
+        scale: 1.3,
+        rotation: 360,
+        stagger: 0.1,
+        repeat: -1,
+        yoyo: true
+      });
+      
+      gsap.to(timerRef.current, {
+        scale: 1.1,
+        duration: 0.8,
+        yoyo: true,
+        repeat: -1,
+        ease: "sine.inOut"
+      });
+
+      setTimeout(() => {
+        if (birthdayButtonRef.current) {
+          gsap.fromTo(birthdayButtonRef.current,
+            { opacity: 0, scale: 0, y: 50 },
+            { opacity: 1, scale: 1, y: 0, duration: 1.5, ease: "back.out(1.7)" }
+          );
+        }
+      }, 1000);
     }
-  }, [timeLeft.days, timeLeft.hours, timeLeft.minutes, timeLeft.seconds, dramaticMode, comfortMode]);
+  }, [state.isButtonEnabled, createFairyDust]);
 
-  const TimeUnit = React.memo(({ label, value, color, unitRef }) => {
-    const gradientMap = {
-      "from-purple-500 to-blue-500": "linear-gradient(135deg, #d8b4fe, #93c5fd)",
-      "from-pink-500 to-purple-500": "linear-gradient(135deg, #f9a8d4, #d8b4fe)",
-      "from-indigo-500 to-blue-400": "linear-gradient(135deg, #a5b4fc, #7dd3fc)",
-      "from-green-400 to-teal-400": "linear-gradient(135deg, #86efac, #5eead4)"
-    };
-
-    return (
-      <div 
-        ref={unitRef}
-        className="time-unit relative flex flex-col items-center justify-center w-20 h-20 md:w-24 md:h-24 rounded-xl shadow-lg transform transition-all duration-300 hover:scale-105"
-        style={{
-          background: comfortMode 
-            ? `linear-gradient(135deg, #ffd6e0, #c4f0ff)`
-            : rainbowMode 
-            ? `linear-gradient(45deg, hsl(${Math.random() * 360}, 80%, 70%), hsl(${Math.random() * 360}, 80%, 70%))`
-            : partyMode
-            ? `linear-gradient(135deg, hsl(${value * 15}, 80%, 70%), hsl(${value * 15 + 60}, 80%, 70%))`
-            : dramaticMode
-            ? `linear-gradient(135deg, hsl(${Math.random() * 360}, 80%, 70%), hsl(${Math.random() * 360}, 80%, 70%))`
-            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1))',
-          backdropFilter: 'blur(12px)',
-          border: comfortMode 
-            ? '2px solid rgba(255, 255, 255, 0.5)' 
-            : dramaticMode 
-            ? '2px solid white' 
-            : '1px solid rgba(255, 255, 255, 0.2)'
-        }}
-      >
-        <div 
-          className="absolute inset-0 rounded-xl opacity-60"
-          style={{
-            background: comfortMode 
-              ? `linear-gradient(135deg, #ffb6c1, #87ceeb)`
-              : gradientMap[color],
-            filter: 'blur(8px)',
-            zIndex: -1
-          }}
-        />
-        
-        <div 
-          className="absolute inset-1 rounded-lg flex flex-col items-center justify-center"
-          style={{
-            background: comfortMode 
-              ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.8))'
-              : dramaticMode 
-              ? `linear-gradient(135deg, hsla(${Math.random() * 360}, 100%, 60%, 0.9), hsla(${Math.random() * 360}, 100%, 60%, 0.9))`
-              : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85))',
-          }}
-        >
-          <div 
-            className="text-2xl md:text-3xl font-bold mb-1"
-            style={{
-              background: comfortMode 
-                ? 'linear-gradient(135deg, #ff6b6b, #4ecdc4)'
-                : dramaticMode 
-                ? 'linear-gradient(135deg, #ffffff, #ffff00)'
-                : gradientMap[color],
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              textShadow: comfortMode ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-            }}
-          >
-            {value.toString().padStart(2, '0')}
-          </div>
-          <div className={`text-xs font-medium uppercase tracking-wider ${
-            comfortMode ? 'text-pink-600' : 'text-gray-600'
-          }`}>
-            {label}
-          </div>
-        </div>
-      </div>
-    );
-  });
+  // Destructure state for cleaner access
+  const { 
+    timeLeft, isButtonEnabled, showSurprise, currentImage, currentMessage, 
+    easterEggsFound, secretMode, rainbowMode, partyMode, dramaticMode, 
+    comfortMode, fairyDustMode, magicalMessages 
+  } = state;
 
   return (
     <div 
       className={`min-h-screen flex items-center justify-center p-4 transition-all duration-1000 ${
         comfortMode ? 'comfort-mode' :
-        dramaticMode ? 'dramatic-mode' :
-        secretMode ? 'bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400' :
-        partyMode ? 'bg-gradient-to-br from-yellow-300 via-red-300 to-pink-400' :
-        rainbowMode ? 'bg-gradient-to-br from-red-300 via-green-300 to-blue-300' :
-        'bg-gradient-to-br from-pink-300 via-purple-400 to-indigo-500'
+        dramaticMode ? 'emergency-mode' :
+        secretMode ? 'bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600' :
+        partyMode ? 'bg-gradient-to-br from-yellow-400 via-red-400 to-pink-500' :
+        rainbowMode ? 'bg-gradient-to-br from-red-400 via-green-400 to-blue-400' :
+        'bg-gradient-to-br from-pink-400 via-purple-500 to-indigo-600'
       }`}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
@@ -806,9 +749,9 @@ const Countdown = () => {
       )}
 
       {/* Dramatic Mode Alert */}
-      {dramaticMode && !comfortMode && (
-        <div className="dramatic-alert fixed top-0 left-0 w-full bg-gradient-to-r from-yellow-400 to-red-500 text-white text-center py-2 font-bold text-lg z-50">
-          ✨ Get Ready! {timeLeft.hours}h {timeLeft.minutes}m {timeLeft.seconds}s Until Magic! ✨
+      {dramaticMode && (
+        <div className="emergency-alert fixed top-0 left-0 w-full bg-red-600 text-white text-center py-2 font-bold text-lg z-50 animate-pulse">
+          🚨 BIRTHDAY COUNTDOWN CRITICAL! {timeLeft.hours}h {timeLeft.minutes}m {timeLeft.seconds}s REMAINING! 🚨
         </div>
       )}
 
@@ -828,17 +771,17 @@ const Countdown = () => {
       ))}
 
       {/* Easter Egg Notifications */}
-      <div className="easter-egg-notification fixed top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-yellow-300 to-pink-300 text-purple-900 px-6 py-3 rounded-full font-bold text-lg shadow-2xl opacity-0 -translate-y-50 z-50">
-        🧚 Magical Secret Found! ✨
+      <div className="easter-egg-notification fixed top-4 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-purple-900 px-6 py-3 rounded-full font-bold text-lg shadow-2xl opacity-0 -translate-y-50 z-50">
+        🥚 Easter Egg Found! Check the collection! 🎉
       </div>
 
       {/* Easter Egg Collection */}
       {easterEggsFound.length > 0 && (
-        <div className="fixed top-4 right-4 bg-white/30 backdrop-blur-lg rounded-lg p-3 border border-white/40 max-w-xs">
-          <p className="text-white text-sm font-bold mb-2">🎯 Magical Secrets: {easterEggsFound.length}/9</p>
+        <div className="fixed top-4 right-4 bg-white/20 backdrop-blur-lg rounded-lg p-3 border border-white/30 max-w-xs">
+          <p className="text-white text-sm font-bold mb-2">🎯 Easter Eggs: {easterEggsFound.length}/9</p>
           <div className="flex flex-wrap gap-1">
             {easterEggsFound.map(egg => (
-              <span key={egg} className="text-xs bg-gradient-to-r from-green-400 to-blue-400 text-white px-2 py-1 rounded">
+              <span key={egg} className="text-xs bg-green-500 text-white px-2 py-1 rounded">
                 {easterEggs[egg]?.name}
               </span>
             ))}
@@ -846,72 +789,73 @@ const Countdown = () => {
         </div>
       )}
 
-      {/* Magical Instructions */}
-      <div className="fixed bottom-4 left-4 bg-black/40 text-white px-3 py-2 rounded text-sm max-w-xs backdrop-blur-sm">
-        <p className="font-bold">Magical Secrets! 🧚</p>
+      {/* Easter Egg Instructions */}
+      <div className="fixed bottom-4 left-4 bg-black/50 text-white px-3 py-2 rounded text-sm max-w-xs">
+        <p className="font-bold">Easter Egg Hunt! 🥚</p>
         <p className="text-xs mt-1">
           <strong>Desktop:</strong><br/>
-          • Type "COMFORT" for cozy mode<br/>
           • Konami code: ↑↑↓↓←→←→BA<br/>
-          • Type "BIRTHDAY"<br/><br/>
+          • Type "BIRTHDAY"<br/>
+          • Type "COMFORT"<br/><br/>
           <strong>Mobile:</strong><br/>
-          • Gentle phone shake<br/>
-          • Swipe right → for magic<br/>
+          • Shake phone<br/>
+          • Swipe right →<br/>
           • Swipe up ↑ / down ↓<br/>
           • Tap patterns (S=short, L=long)
         </p>
       </div>
 
+      {/* Main Timer Container */}
       <div 
         ref={timerRef}
-        className={`timer-container relative w-full max-w-2xl mx-auto flex flex-col items-center justify-center space-y-6 md:space-y-8 rounded-2xl p-6 md:p-8 shadow-2xl border-2 backdrop-blur-xl ${
+        className={`timer-container relative w-full max-w-2xl mx-auto flex flex-col items-center justify-center space-y-6 md:space-y-8 rounded-2xl p-6 md:p-8 shadow-xl border backdrop-blur-lg ${
           comfortMode 
             ? 'bg-white/40 border-white/50 comfort-glow' 
-            : dramaticMode
-            ? 'bg-gradient-to-br from-yellow-200/30 to-red-200/30 border-yellow-300/50 dramatic-glow'
-            : 'bg-gradient-to-br from-white/30 via-pink-100/30 to-purple-100/30 border-white/40'
+            : dramaticMode 
+            ? 'bg-red-500/20 border-red-500/50 emergency-glow'
+            : 'bg-gradient-to-br from-white/20 via-pink-100/20 to-purple-100/20 border-white/30'
         }`}
       >
         {/* Header */}
-        <div className="text-center space-y-4">
+        <div className="text-center space-y-3">
           <div className="flex justify-center items-center space-x-3">
-            <span className="text-4xl">
+            <span className="text-3xl">
               {comfortMode ? '💖' :
-               dramaticMode ? '✨' :
+               dramaticMode ? '🚨' : 
                secretMode ? '🎮' : 
                partyMode ? '📱' : 
-               rainbowMode ? '🌈🦄' : '🎂'}
+               rainbowMode ? '🌈' : '🎂'}
             </span>
-            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
+            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
               {comfortMode ? 'Almost There, Superstar! 💫' :
-               dramaticMode ? 'Magical Countdown! ✨' :
-               secretMode ? 'Secret Code! 🎮' : 
-               partyMode ? 'Celebration Time! 🎉' : 
-               rainbowMode ? 'Rainbow Magic! 🌈' : 
-               'Birthday Countdown! 🎂'}
+               dramaticMode ? 'EMERGENCY COUNTDOWN!' :
+               secretMode ? 'KONAMI CODE!' : 
+               partyMode ? 'SHAKE IT!' : 
+               rainbowMode ? 'RAINBOW MODE!' : 
+               'Birthday Countdown!'}
             </h1>
-            <span className="text-4xl">
+            <span className="text-3xl">
               {comfortMode ? '⭐' :
-               dramaticMode ? '🌟' :
+               dramaticMode ? '⚠️' :
                secretMode ? '👾' : 
-               partyMode ? '🎊' : 
+               partyMode ? '🎉' : 
                rainbowMode ? '🦄' : '🎁'}
             </span>
           </div>
-          <p className="text-white text-base md:text-lg max-w-md font-medium text-shadow">
+          <p className="text-white text-base md:text-lg max-w-md font-medium">
             {comfortMode 
               ? `You're doing amazing! ${timeLeft.minutes}m ${timeLeft.seconds}s until your special day begins! 💖` 
               : dramaticMode 
-              ? `✨ ${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s until your magical adventure! ✨` 
+              ? `🚨 CRITICAL: ${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s UNTIL BIRTHDAY! 🚨` 
               : secretMode 
-              ? "You discovered magical secrets! You're so clever! 🌟" 
+              ? "You found the legendary Konami code! Legendary! 🎮" 
               : partyMode
-              ? "You're shining so bright! Keep that amazing energy! ✨"
-              : "Counting down to the most wonderful day for the most wonderful sister! 💝"
+              ? "Woohoo! Shake it like a polaroid picture! 📱"
+              : "Counting down to November 2nd, 2025! Get ready for an amazing day!"
             }
           </p>
-          <p className="text-pink-200 text-sm md:text-base font-medium">
-            For my incredible little sister! {comfortMode ? '💖✨💖' : '💝'}
+          <p className="text-pink-200 text-sm md:text-base">
+            For my awesome little sister! {comfortMode ? '💖✨💖' : rainbowMode ? '✨🌈✨' : '💖'}
           </p>
         </div>
 
@@ -922,40 +866,56 @@ const Countdown = () => {
             value={timeLeft.days} 
             color="from-purple-500 to-blue-500"
             unitRef={daysRef}
+            comfortMode={comfortMode}
+            dramaticMode={dramaticMode}
+            rainbowMode={rainbowMode}
+            partyMode={partyMode}
           />
           <TimeUnit 
             label="Hours" 
             value={timeLeft.hours} 
             color="from-pink-500 to-purple-500"
             unitRef={hoursRef}
+            comfortMode={comfortMode}
+            dramaticMode={dramaticMode}
+            rainbowMode={rainbowMode}
+            partyMode={partyMode}
           />
           <TimeUnit 
             label="Minutes" 
             value={timeLeft.minutes} 
             color="from-indigo-500 to-blue-400"
             unitRef={minutesRef}
+            comfortMode={comfortMode}
+            dramaticMode={dramaticMode}
+            rainbowMode={rainbowMode}
+            partyMode={partyMode}
           />
           <TimeUnit 
             label="Seconds" 
             value={timeLeft.seconds} 
             color="from-green-400 to-teal-400"
             unitRef={secondsRef}
+            comfortMode={comfortMode}
+            dramaticMode={dramaticMode}
+            rainbowMode={rainbowMode}
+            partyMode={partyMode}
           />
         </div>
 
         {/* Progress Bar */}
         <div className="w-full max-w-md mt-2">
-          <div className="flex justify-between text-sm text-white mb-2 font-medium">
-            <span>Magic Building</span>
+          <div className="flex justify-between text-xs text-white mb-1">
+            <span>Excitement Level</span>
             <span>{Math.round(((365 - timeLeft.days) / 365) * 100)}%</span>
           </div>
-          <div className="w-full h-3 bg-white/30 rounded-full overflow-hidden">
+          <div className="w-full h-2 bg-white/30 rounded-full overflow-hidden">
             <div 
               className={`h-full rounded-full transition-all duration-1000 ease-out ${
                 comfortMode 
                   ? 'bg-gradient-to-r from-pink-400 to-blue-400' 
                   : dramaticMode 
-                  ? 'bg-gradient-to-r from-yellow-400 to-red-500 animate-pulse'
+                  ? 'bg-gradient-to-r from-red-500 via-yellow-500 to-red-500 animate-pulse'
                   : 'bg-gradient-to-r from-pink-500 to-purple-500'
               }`}
               style={{
@@ -970,20 +930,21 @@ const Countdown = () => {
           {/* Main Surprise Button */}
           <button 
             onClick={handleSurpriseClick}
-            className={`surprise-btn w-full px-5 py-4 rounded-xl font-bold text-lg shadow-xl transform transition-all duration-300 ${
+            type="button" // ← Added type="button" to prevent form submission
+            className={`surprise-btn w-full px-5 py-3 rounded-lg font-semibold shadow-lg transform transition-all duration-300 ${
               isButtonEnabled 
-                ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:scale-105 cursor-pointer hover:shadow-2xl' 
+                ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:scale-105 cursor-pointer' 
                 : comfortMode
                 ? 'bg-gradient-to-r from-pink-400 to-blue-400 text-white cursor-pointer hover:scale-105 comfort-glow'
                 : dramaticMode
-                ? 'bg-gradient-to-r from-yellow-400 to-red-500 text-white cursor-pointer hover:scale-105 dramatic-glow'
-                : 'bg-white/40 text-white cursor-pointer hover:scale-105 backdrop-blur-sm'
+                ? 'bg-red-500 text-white cursor-pointer hover:scale-105 animate-pulse'
+                : 'bg-white/30 text-white cursor-pointer hover:scale-105'
             }`}
           >
             <span className="fas fa-gift mr-2" />
             {comfortMode ? '💖 You Are Amazing! 💖' : 
-             dramaticMode ? '✨ Magic Awaits! ✨' : 
-             isButtonEnabled ? 'Enter Wonderland! 🎊' : 'Get Magical Surprise! ✨'}
+             dramaticMode ? '🚨 GET READY! 🚨' : 
+             isButtonEnabled ? 'View Surprises!' : 'Get Random Surprise!'}
           </button>
 
           {/* Birthday Special Page Button */}
@@ -991,35 +952,45 @@ const Countdown = () => {
             <button 
               ref={birthdayButtonRef}
               onClick={redirectToBirthdayPage}
-              className="birthday-special-btn w-full px-5 py-4 bg-gradient-to-r from-yellow-300 to-orange-400 text-white rounded-xl font-bold text-lg shadow-xl transform hover:scale-105 transition-all duration-300 hover:shadow-2xl border-2 border-yellow-200 backdrop-blur-sm"
+              type="button" // ← Added type="button" to prevent form submission
+              className="birthday-special-btn w-full px-5 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-lg font-bold shadow-lg transform hover:scale-105 transition-all duration-300 hover:shadow-xl border-2 border-yellow-300"
             >
               <span className="fas fa-star mr-2" />
-              🎊 Start Your Magical Day! 🎊
+              🎊 Enter Birthday Wonderland! 🎊
               <span className="fas fa-star ml-2" />
             </button>
           )}
         </div>
 
-        {/* Magical Instructions */}
-        {!isButtonEnabled && (
-          <div className="text-center p-4 bg-white/20 rounded-xl backdrop-blur-sm max-w-md border border-white/30">
-            <p className="text-white text-sm italic font-medium">
-              {comfortMode 
-                ? "You're handling the wait like a champion! So proud of you! 💫" 
-                : dramaticMode
-                ? "The magic is building! You're doing great! ✨"
-                : "Discover magical secrets with gestures, shaking, or secret words! 🧚"
-              }
+        {/* Easter Egg Instructions */}
+        {!isButtonEnabled && !dramaticMode && !comfortMode && (
+          <div className="text-center p-3 bg-white/10 rounded-xl backdrop-blur-sm max-w-md">
+            <p className="text-white text-sm italic">
+              Discover hidden easter eggs! Try gestures, shaking, or secret codes! 🥚
             </p>
           </div>
         )}
+
+        {/* Message */}
+        <div className="text-center p-3 bg-white/10 rounded-xl backdrop-blur-sm">
+          <p className="text-white text-sm md:text-base italic">
+            {comfortMode 
+              ? `You're handling the wait like a champion! So proud of you! 💫` 
+              : dramaticMode
+              ? `🚨 ALERT: ${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s REMAINING! 🚨`
+              : isButtonEnabled 
+              ? "🎉 IT'S YOUR BIRTHDAY! Click to celebrate! 🎉" 
+              : `Only ${timeLeft.days} days until November 2nd, 2025! 🎈`
+            }
+          </p>
+        </div>
 
         {/* Floating Elements */}
         <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
           {[...Array(comfortMode ? 15 : dramaticMode ? 20 : 12)].map((_, i) => (
             <div
               key={i}
-              className="floating-element absolute text-xl opacity-70"
+              className="floating-element absolute text-lg opacity-50"
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
@@ -1031,7 +1002,7 @@ const Countdown = () => {
               {comfortMode 
                 ? ['💖', '⭐', '✨', '🌟', '🎀'][i % 5]
                 : dramaticMode 
-                ? ['✨', '🌟', '⚡', '🎊', '🔥', '🎇'][i % 6]
+                ? ['🚨', '⚠️', '💥', '🎊', '🔥', '⚡'][i % 6]
                 : ['🎈', '🎂', '🎁', '⭐'][i % 4]
               }
             </div>
@@ -1039,74 +1010,57 @@ const Countdown = () => {
         </div>
       </div>
 
-      {/* FULL SCREEN SURPRISE MODAL */}
+      {/* SURPRISE MODAL */}
       {showSurprise && (
         <div className="fixed inset-0 bg-black/95 flex flex-col items-center justify-center z-50 p-4">
           <div 
             ref={surpriseModalRef}
             className="w-full h-full flex flex-col items-center justify-center max-w-4xl mx-auto"
           >
-            {/* Header */}
             <div className="text-center mb-4 md:mb-6 px-4">
-              <h3 className="text-2xl md:text-4xl font-bold text-white mb-2">
-                {isButtonEnabled ? "Happy Magical Birthday! 🎉✨" : currentMessage}
+              <h3 className="text-xl md:text-3xl font-bold text-white mb-2">
+                {isButtonEnabled ? "Happy Birthday! 🎉" : currentMessage}
               </h3>
             </div>
 
-            {/* Full Screen Image Container */}
             <div className="flex-1 w-full flex items-center justify-center p-2 md:p-4 max-h-[60vh]">
               {currentImage ? (
                 <img 
-                  ref={imageRef}
                   src={currentImage} 
-                  alt="Magical surprise" 
-                  className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border-4 border-white/30"
-                  loading="lazy"
-                  onError={(e) => {
-                    console.error("Image failed to load");
-                    e.target.style.display = 'none';
-                  }}
-                  onLoad={() => {
-                    gsap.fromTo(imageRef.current, 
-                      { scale: 0.8, opacity: 0 },
-                      { scale: 1, opacity: 1, duration: 1, ease: "back.out(1.7)" }
-                    );
-                  }}
+                  alt="Funny surprise" 
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
                 />
               ) : (
-                <div className="w-full h-48 flex items-center justify-center bg-gradient-to-br from-pink-200 to-purple-200 rounded-2xl border-4 border-white/30">
-                  <p className="text-gray-600 font-bold text-xl">✨ Loading magic... ✨</p>
+                <div className="w-full h-48 flex items-center justify-center bg-gradient-to-br from-pink-200 to-purple-200 rounded-lg">
+                  <p className="text-gray-600 font-bold text-xl">🎁 Loading surprise... 🎁</p>
                 </div>
               )}
             </div>
 
-            {/* Message */}
             <div className="text-center my-4 md:my-6 px-4">
-              <p className="text-white text-lg md:text-xl font-medium">
+              <p className="text-white text-base md:text-lg">
                 {isButtonEnabled 
-                  ? "Ready for your magical birthday adventure?" 
-                  : "You found a magical surprise! ✨😊"
+                  ? "Ready for your birthday adventure?" 
+                  : "Found a secret surprise! 😄"
                 }
               </p>
             </div>
 
-            {/* BUTTONS */}
-            <div 
-              ref={buttonContainerRef}
-              className="w-full flex flex-col sm:flex-row gap-3 justify-center items-center px-4 pb-4 md:pb-8"
-            >
+            <div className="w-full flex flex-col sm:flex-row gap-3 justify-center items-center px-4 pb-4 md:pb-8">
               <button 
                 onClick={isButtonEnabled ? redirectToBirthdayPage : closeSurpriseModal}
-                className="w-full sm:w-auto px-6 py-4 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-xl font-bold text-lg hover:scale-105 transition-transform min-h-[60px] flex items-center justify-center shadow-xl"
+                type="button" // ← Added type="button" to prevent form submission
+                className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-xl font-bold text-base md:text-lg hover:scale-105 transition-transform min-h-[50px] flex items-center justify-center"
               >
-                {isButtonEnabled ? "Let's Begin Magic! 🎊" : "Close"}
+                {isButtonEnabled ? "Let's Go! 🎊" : "Close"}
               </button>
               {isButtonEnabled && (
                 <button 
                   onClick={redirectToBirthdayPage}
-                  className="w-full sm:w-auto px-6 py-4 bg-gradient-to-r from-yellow-300 to-orange-400 text-white rounded-xl font-bold text-lg hover:scale-105 transition-transform min-h-[60px] flex items-center justify-center shadow-xl"
+                  type="button" // ← Added type="button" to prevent form submission
+                  className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-xl font-bold text-base md:text-lg hover:scale-105 transition-transform min-h-[50px] flex items-center justify-center"
                 >
-                  Magical Journey ✨
+                  Special Page ✨
                 </button>
               )}
             </div>
@@ -1117,17 +1071,22 @@ const Countdown = () => {
       <style>{`
         @keyframes float {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-15px) rotate(5deg); }
+          50% { transform: translateY(-10px) rotate(5deg); }
+        }
+        
+        @keyframes emergency-pulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.05); opacity: 0.8; }
+        }
+        
+        @keyframes emergency-glow {
+          0%, 100% { box-shadow: 0 0 20px red; }
+          50% { box-shadow: 0 0 40px yellow, 0 0 60px red; }
         }
         
         @keyframes comfort-glow {
           0%, 100% { box-shadow: 0 0 30px rgba(255, 182, 193, 0.5); }
           50% { box-shadow: 0 0 50px rgba(135, 206, 235, 0.5); }
-        }
-        
-        @keyframes dramatic-glow {
-          0%, 100% { box-shadow: 0 0 30px rgba(255, 255, 0, 0.5); }
-          50% { box-shadow: 0 0 60px rgba(255, 0, 0, 0.5); }
         }
         
         @keyframes fairy-dust {
@@ -1137,39 +1096,31 @@ const Countdown = () => {
         }
         
         .floating-element {
-          animation: float 4s ease-in-out infinite;
+          animation: float 3s ease-in-out infinite;
         }
         
-        .comfort-mode {
-          animation: comfort-glow 3s ease-in-out infinite;
+        .emergency-mode {
+          animation: emergency-pulse 1s ease-in-out infinite;
         }
         
-        .dramatic-mode {
-          animation: dramatic-glow 2s ease-in-out infinite;
+        .emergency-glow {
+          animation: emergency-glow 2s ease-in-out infinite;
         }
         
         .comfort-glow {
           animation: comfort-glow 2s ease-in-out infinite;
         }
         
-        .dramatic-glow {
-          animation: dramatic-glow 1.5s ease-in-out infinite;
+        .emergency-alert {
+          animation: emergency-pulse 0.5s ease-in-out infinite;
         }
         
         .comfort-alert {
           animation: comfort-glow 2s ease-in-out infinite;
         }
         
-        .dramatic-alert {
-          animation: dramatic-glow 1s ease-in-out infinite;
-        }
-        
         .fairy-dust {
           animation: fairy-dust 3s ease-out forwards;
-        }
-        
-        .text-shadow {
-          text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
         
         .magical-message {
@@ -1178,6 +1129,4 @@ const Countdown = () => {
       `}</style>
     </div>
   );
-};
-
-export default Countdown;
+}
