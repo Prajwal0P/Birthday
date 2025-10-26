@@ -93,18 +93,14 @@ export default function Countdown() {
     showSurprise: false,
     currentImage: "",
     currentMessage: "",
-    easterEggsFound: [],
-    secretMode: false,
-    rainbowMode: false,
-    partyMode: false,
-    dramaticMode: false,
-    comfortMode: false,
-    fairyDustMode: false,
     magicalMessages: [],
-    keySequence: [],
+    nightMode: false,
+    tapCount: 0,
     shakeCount: 0,
-    touchStart: null,
-    tapPattern: []
+    hiddenSpotTapCount: 0,
+    multiTapCount: 0,
+    titleTapSequence: [],
+    numberTapCount: 0
   });
 
   // Helper to update state
@@ -112,7 +108,7 @@ export default function Countdown() {
     setState(prev => ({ ...prev, ...updates }));
   }, []);
 
-  // Refs
+  // Refs for tracking
   const timerRef = useRef(null);
   const daysRef = useRef(null);
   const hoursRef = useRef(null);
@@ -124,35 +120,16 @@ export default function Countdown() {
   const comfortModeActivated = useRef(false);
   const dramaticModeActivated = useRef(false);
   const intervalsRef = useRef([]);
+  
+  // Mobile-friendly tap tracking refs
+  const lastTapTimeRef = useRef(0);
+  const lastMultiTapTimeRef = useRef(0);
+  const lastHiddenTapTimeRef = useRef(0);
+  const lastNumberTapTimeRef = useRef(0);
+  const touchStartRef = useRef(null);
 
   // Memoized constants
   const funnyImages = useMemo(() => images || [], []);
-  
-  const easterEggs = useMemo(() => ({
-    konami_code: { name: "Konami Code! ⬆️⬆️⬇️⬇️", found: false },
-    birthday_typing: { name: "Birthday Typing 🎂", found: false },
-    shake_celebration: { name: "Shake Celebration 📱", found: false },
-    rainbow_unicorn: { name: "Rainbow Unicorn Mode 🌈", found: false },
-    disco_lights: { name: "Disco Lights 💃", found: false },
-    cosmic_dance: { name: "Cosmic Dance 🌟", found: false },
-    swipe_magic: { name: "Swipe Magic ✨", found: false },
-    comfort_mode: { name: "Comfort Mode 🛋️", found: false },
-    fairy_dust: { name: "Fairy Dust Mode 🧚", found: false }
-  }), []);
-
-  const secretSequences = useMemo(() => ({
-    konami: ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA'],
-    birthday: ['KeyB', 'KeyI', 'KeyR', 'KeyT', 'KeyH', 'KeyD', 'KeyA', 'KeyY'],
-    comfort: ['KeyC', 'KeyO', 'KeyM', 'KeyF', 'KeyO', 'KeyR', 'KeyT']
-  }), []);
-
-  const tapPatterns = useMemo(() => ({
-    rainbow: [1, 1, 2],
-    disco: [2, 1, 2],
-    cosmic: [1, 2, 1],
-    comfort: [1, 1, 1],
-    fairy: [2, 2, 1]
-  }), []);
 
   const comfortingMessages = useMemo(() => [
     "You're the most amazing little sister in the whole universe! 🌟",
@@ -165,19 +142,6 @@ export default function Countdown() {
     "Your smile lights up our whole world! 😊",
     "You're growing into such an incredible person! 🌸",
     "The world is a better place because you're in it! 🌎"
-  ], []);
-
-  const magicalEncouragements = useMemo(() => [
-    "Almost there, superstar! Your special day is dawning! 🌅",
-    "Can you feel the magic building? It's almost time! ✨",
-    "The birthday fairies are putting the final touches! 🧚",
-    "Get ready for the most wonderful day ever! 🎉",
-    "Your amazing adventure is about to begin! 🚀",
-    "The whole universe is excited for your birthday! 🌌",
-    "Take a deep breath... magic is happening! 💫",
-    "You've waited so patiently - your reward is here! 🎁",
-    "The stars are dancing in anticipation! 💃",
-    "This is it! Your moment to shine! ⭐"
   ], []);
 
   // Memoized calculations
@@ -205,7 +169,7 @@ export default function Countdown() {
   const isLastHour = useCallback((timeLeft) => 
     timeLeft.days === 0 && timeLeft.hours === 0 && timeLeft.minutes < 60, []);
 
-  // Optimized functions
+  // Animation functions
   const createFairyDust = useCallback(() => {
     if (!fairyContainerRef.current) return;
     const fairyContainer = fairyContainerRef.current;
@@ -219,7 +183,8 @@ export default function Countdown() {
       fairy.style.top = `${Math.random() * 100}%`;
       fairy.style.fontSize = `${Math.random() * 20 + 10}px`;
       fairy.style.opacity = '0';
-      fairy.style.zIndex = '10';
+      fairy.style.zIndex = '1000';
+      fairy.style.pointerEvents = 'none';
       fairy.className = 'fairy-dust';
       fairyContainer.appendChild(fairy);
 
@@ -232,13 +197,421 @@ export default function Countdown() {
         ease: "power1.out",
         onComplete: () => {
           if (fairy.parentNode === fairyContainer) {
-            fairy.remove();
+            fairyContainer.removeChild(fairy);
           }
         }
       });
     }
   }, []);
 
+  const createConfetti = useCallback(() => {
+    if (!fairyContainerRef.current) return;
+    const container = fairyContainerRef.current;
+    const confettiCount = 50;
+    const emojis = ['🎉', '✨', '🎊', '💖', '🌟', '🥳', '🎂', '🍰'];
+
+    for (let i = 0; i < confettiCount; i++) {
+      const confetti = document.createElement('div');
+      confetti.innerHTML = emojis[Math.floor(Math.random() * emojis.length)];
+      confetti.style.position = 'absolute';
+      confetti.style.left = `${Math.random() * 100}%`;
+      confetti.style.top = `${Math.random() * 100}%`;
+      confetti.style.fontSize = `${Math.random() * 20 + 15}px`;
+      confetti.style.opacity = '0';
+      confetti.style.zIndex = '1000';
+      confetti.style.pointerEvents = 'none';
+      confetti.className = 'confetti';
+      container.appendChild(confetti);
+
+      gsap.to(confetti, {
+        duration: Math.random() * 2 + 1,
+        y: -200,
+        x: Math.random() * 200 - 100,
+        rotation: Math.random() * 720,
+        opacity: 1,
+        ease: "power1.out",
+        onComplete: () => {
+          if (confetti.parentNode === container) {
+            container.removeChild(confetti);
+          }
+        }
+      });
+    }
+  }, []);
+
+  const createFlyingEmojis = useCallback(() => {
+    if (!fairyContainerRef.current) return;
+    const container = fairyContainerRef.current;
+    const emojiCount = 20;
+    const emojis = ['🎉', '✨', '💖', '🌟', '🥳', '🎂', '🍰', '😄', '🎁', '⭐'];
+
+    for (let i = 0; i < emojiCount; i++) {
+      const emoji = document.createElement('div');
+      emoji.innerHTML = emojis[Math.floor(Math.random() * emojis.length)];
+      emoji.style.position = 'absolute';
+      emoji.style.left = `${Math.random() * 100}%`;
+      emoji.style.top = `${Math.random() * 100}%`;
+      emoji.style.fontSize = `${Math.random() * 25 + 20}px`;
+      emoji.style.opacity = '0';
+      emoji.style.zIndex = '1000';
+      emoji.style.pointerEvents = 'none';
+      emoji.className = 'flying-emoji';
+      container.appendChild(emoji);
+
+      gsap.to(emoji, {
+        duration: Math.random() * 3 + 2,
+        y: -150,
+        x: Math.random() * 300 - 150,
+        rotation: Math.random() * 360,
+        opacity: 1,
+        ease: "power2.out",
+        onComplete: () => {
+          if (emoji.parentNode === container) {
+            container.removeChild(emoji);
+          }
+        }
+      });
+    }
+  }, []);
+
+  const showFloatingMessage = useCallback((message) => {
+    const newMessage = {
+      id: Date.now(),
+      text: message,
+      top: `${Math.random() * 60 + 20}%`,
+      left: `${Math.random() * 60 + 20}%`
+    };
+    updateState(prev => ({ 
+      magicalMessages: [...prev.magicalMessages, newMessage] 
+    }));
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+      updateState(prev => ({
+        magicalMessages: prev.magicalMessages.filter(msg => msg.id !== newMessage.id)
+      }));
+    }, 5000);
+  }, [updateState]);
+
+  // Easter Egg Functions - SIMPLIFIED AND MOBILE-FRIENDLY
+  const triggerTapCakeSurprise = useCallback(() => {
+    console.log("🎂 Cake tap surprise triggered!");
+    createConfetti();
+    showFloatingMessage("Whoa! You're smashing the cake with your fingers! 🍰😂");
+    
+    gsap.to(".timer-container", {
+      duration: 0.5,
+      scale: 1.1,
+      rotation: 5,
+      yoyo: true,
+      repeat: 2,
+      ease: "elastic.out(1, 0.5)"
+    });
+  }, [createConfetti, showFloatingMessage]);
+
+  const triggerShakeSurprise = useCallback(() => {
+    console.log("📱 Shake surprise triggered!");
+    createFlyingEmojis();
+    showFloatingMessage("Shake it like a polaroid picture! 📱✨");
+    
+    gsap.to("body", {
+      duration: 0.3,
+      rotation: 1,
+      yoyo: true,
+      repeat: 3,
+      ease: "sine.inOut"
+    });
+  }, [createFlyingEmojis, showFloatingMessage]);
+
+  const triggerHiddenSpotSurprise = useCallback(() => {
+    console.log("🔍 Hidden spot surprise triggered!");
+    const surpriseImages = funnyImages.length > 0 ? funnyImages : [""];
+    const randomImage = surpriseImages[Math.floor(Math.random() * surpriseImages.length)];
+    
+    updateState({ 
+      currentImage: randomImage,
+      currentMessage: "Caught you snooping! Here's a secret pic 🤪",
+      showSurprise: true
+    });
+    
+    if (surpriseModalRef.current) {
+      gsap.fromTo(surpriseModalRef.current, 
+        { scale: 0, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.8, ease: "back.out(1.7)" }
+      );
+    }
+  }, [funnyImages, updateState]);
+
+  const triggerMultiTapSurprise = useCallback(() => {
+    console.log("👆 Multi-tap surprise triggered!");
+    const surpriseImages = funnyImages.length > 0 ? funnyImages : [""];
+    const randomImage = surpriseImages[Math.floor(Math.random() * surpriseImages.length)];
+    const sillyMessages = [
+      "Wow, you're tap-happy! 🎉",
+      "Tap dancing much? 💃",
+      "Finger workout complete! 💪",
+      "You've got the magic touch! ✨",
+      "Tap master level unlocked! 🏆"
+    ];
+    const randomMessage = sillyMessages[Math.floor(Math.random() * sillyMessages.length)];
+    
+    updateState({ 
+      currentImage: randomImage,
+      currentMessage: randomMessage,
+      showSurprise: true
+    });
+    
+    if (surpriseModalRef.current) {
+      gsap.fromTo(surpriseModalRef.current, 
+        { scale: 0, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.8, ease: "back.out(1.7)" }
+      );
+    }
+  }, [funnyImages, updateState]);
+
+  const triggerSecretSequence = useCallback(() => {
+    console.log("🎮 Secret sequence triggered!");
+    createFairyDust();
+    showFloatingMessage("Secret sequence activated! 🎮✨");
+    
+    gsap.to(".time-unit", {
+      duration: 1,
+      y: -20,
+      scale: 1.2,
+      stagger: 0.1,
+      ease: "back.out(1.7)",
+      repeat: 1,
+      yoyo: true
+    });
+  }, [createFairyDust, showFloatingMessage]);
+
+  const triggerCountdownEasterEgg = useCallback(() => {
+    console.log("⏰ Countdown easter egg triggered!");
+    const messages = [
+      "Trying to speed up time? Not today, time traveler! ⏳😂",
+      "Patience, young padawan! The force will be with you soon! 🌌",
+      "Time can't be rushed! But your birthday is worth the wait! 🎂",
+      "No fast-forwarding allowed! Enjoy the anticipation! 🎊"
+    ];
+    const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+    showFloatingMessage(randomMessage);
+    
+    gsap.to(".time-unit", {
+      duration: 0.5,
+      y: 10,
+      stagger: 0.1,
+      ease: "bounce.out",
+      repeat: 1,
+      yoyo: true
+    });
+  }, [showFloatingMessage]);
+
+  const triggerSwipeSurprise = useCallback(() => {
+    console.log("⬇️ Swipe surprise triggered!");
+    updateState({ nightMode: true });
+    showFloatingMessage("Late-night party mode activated! 🌙✨");
+    
+    gsap.to("body", {
+      duration: 2,
+      background: "linear-gradient(135deg, #0f172a, #1e293b, #334155)",
+      ease: "sine.inOut"
+    });
+
+    // Create floating stars
+    if (fairyContainerRef.current) {
+      const container = fairyContainerRef.current;
+      const starCount = 25;
+      
+      for (let i = 0; i < starCount; i++) {
+        const star = document.createElement('div');
+        star.innerHTML = '⭐';
+        star.style.position = 'absolute';
+        star.style.left = `${Math.random() * 100}%`;
+        star.style.top = `${Math.random() * 100}%`;
+        star.style.fontSize = `${Math.random() * 15 + 10}px`;
+        star.style.opacity = '0';
+        star.style.zIndex = '1000';
+        star.style.pointerEvents = 'none';
+        star.className = 'floating-star';
+        container.appendChild(star);
+
+        gsap.to(star, {
+          duration: Math.random() * 4 + 3,
+          y: -50,
+          x: Math.random() * 100 - 50,
+          rotation: Math.random() * 360,
+          opacity: 0.8,
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut"
+        });
+      }
+    }
+  }, [updateState, showFloatingMessage]);
+
+  // Mobile-friendly event handlers
+  const handleCakeTap = useCallback((event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const currentTime = Date.now();
+    if (currentTime - lastTapTimeRef.current > 1000) {
+      // Reset if more than 1 second between taps
+      updateState({ tapCount: 1 });
+    } else {
+      // Increment tap count
+      updateState(prev => ({ tapCount: prev.tapCount + 1 }));
+    }
+    lastTapTimeRef.current = currentTime;
+
+    console.log(`🎂 Cake taps: ${state.tapCount + 1}`);
+
+    // Trigger after 3 taps (more mobile-friendly)
+    if (state.tapCount >= 2) { // 3 taps total (0,1,2)
+      triggerTapCakeSurprise();
+      updateState({ tapCount: 0 });
+    }
+  }, [state.tapCount, triggerTapCakeSurprise, updateState]);
+
+  const handleHiddenSpotTap = useCallback((event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const currentTime = Date.now();
+    if (currentTime - lastHiddenTapTimeRef.current > 2000) {
+      updateState({ hiddenSpotTapCount: 1 });
+    } else {
+      updateState(prev => ({ hiddenSpotTapCount: prev.hiddenSpotTapCount + 1 }));
+    }
+    lastHiddenTapTimeRef.current = currentTime;
+
+    console.log(`🔍 Hidden spot taps: ${state.hiddenSpotTapCount + 1}`);
+
+    if (state.hiddenSpotTapCount >= 2) { // 3 taps
+      triggerHiddenSpotSurprise();
+      updateState({ hiddenSpotTapCount: 0 });
+    }
+  }, [state.hiddenSpotTapCount, triggerHiddenSpotSurprise, updateState]);
+
+  const handleMultiTap = useCallback((event) => {
+    // Don't trigger if clicking buttons
+    if (event.target.closest('button')) return;
+    
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const currentTime = Date.now();
+    if (currentTime - lastMultiTapTimeRef.current > 1000) {
+      updateState({ multiTapCount: 1 });
+    } else {
+      updateState(prev => ({ multiTapCount: prev.multiTapCount + 1 }));
+    }
+    lastMultiTapTimeRef.current = currentTime;
+
+    console.log(`👆 Multi-taps: ${state.multiTapCount + 1}`);
+
+    if (state.multiTapCount >= 4) { // 5 taps total
+      triggerMultiTapSurprise();
+      updateState({ multiTapCount: 0 });
+    }
+  }, [state.multiTapCount, triggerMultiTapSurprise, updateState]);
+
+  const handleTitleTap = useCallback((event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const rect = event.currentTarget.getBoundingClientRect();
+    const tapPosition = event.clientX < rect.left + rect.width / 2 ? 'left' : 'right';
+    
+    updateState(prev => {
+      const newSequence = [...prev.titleTapSequence, tapPosition].slice(-4);
+      console.log(`🎮 Title tap sequence: ${newSequence.join(',')}`);
+      
+      if (newSequence.join(',') === 'left,right,left,right') {
+        triggerSecretSequence();
+        return { ...prev, titleTapSequence: [] };
+      }
+      
+      return { ...prev, titleTapSequence: newSequence };
+    });
+
+    // Clear sequence after 3 seconds
+    setTimeout(() => updateState({ titleTapSequence: [] }), 3000);
+  }, [triggerSecretSequence, updateState]);
+
+  const handleNumberTap = useCallback((event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const currentTime = Date.now();
+    if (currentTime - lastNumberTapTimeRef.current > 2000) {
+      updateState({ numberTapCount: 1 });
+    } else {
+      updateState(prev => ({ numberTapCount: prev.numberTapCount + 1 }));
+    }
+    lastNumberTapTimeRef.current = currentTime;
+
+    console.log(`⏰ Number taps: ${state.numberTapCount + 1}`);
+
+    if (state.numberTapCount >= 3) { // 4 taps
+      triggerCountdownEasterEgg();
+      updateState({ numberTapCount: 0 });
+    }
+  }, [state.numberTapCount, triggerCountdownEasterEgg, updateState]);
+
+  // Mobile-friendly shake detection
+  const handleShake = useCallback(() => {
+    const newShakeCount = state.shakeCount + 1;
+    updateState({ shakeCount: newShakeCount });
+    
+    console.log(`📱 Shake count: ${newShakeCount}`);
+
+    if (newShakeCount >= 2) { // 3 shakes
+      triggerShakeSurprise();
+      updateState({ shakeCount: 0 });
+    }
+    
+    // Reset shake count after 3 seconds
+    setTimeout(() => updateState({ shakeCount: 0 }), 3000);
+  }, [state.shakeCount, triggerShakeSurprise, updateState]);
+
+  // Mobile-friendly swipe detection
+  const handleTouchStart = useCallback((e) => {
+    touchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      time: Date.now()
+    };
+  }, []);
+
+  const handleTouchEnd = useCallback((e) => {
+    if (!touchStartRef.current) return;
+    
+    const touchEnd = {
+      x: e.changedTouches[0].clientX,
+      y: e.changedTouches[0].clientY,
+      time: Date.now()
+    };
+    
+    const swipeDistance = {
+      x: touchEnd.x - touchStartRef.current.x,
+      y: touchEnd.y - touchStartRef.current.y
+    };
+    
+    const swipeTime = touchEnd.time - touchStartRef.current.time;
+
+    console.log(`⬇️ Swipe detected: ${Math.abs(swipeDistance.y)}px in ${swipeTime}ms`);
+
+    if (swipeTime < 500 && Math.abs(swipeDistance.y) > 100 && Math.abs(swipeDistance.x) < 50) {
+      if (swipeDistance.y > 0) { // Swipe down
+        triggerSwipeSurprise();
+      }
+    }
+    
+    touchStartRef.current = null;
+  }, [triggerSwipeSurprise]);
+
+  // Original functions (keep these)
   const activateComfortMode = useCallback(() => {
     if (comfortModeActivated.current) return;
     comfortModeActivated.current = true;
@@ -275,7 +648,7 @@ export default function Countdown() {
       }
       const newMessage = {
         id: Date.now(),
-        text: magicalEncouragements[messageIndex % magicalEncouragements.length],
+        text: "You're doing amazing! Almost there! 💫",
         top: `${Math.random() * 70 + 15}%`,
         left: `${Math.random() * 70 + 15}%`
       };
@@ -286,7 +659,7 @@ export default function Countdown() {
     }, 8000);
 
     intervalsRef.current.push(messageInterval);
-  }, [magicalEncouragements, updateState]);
+  }, [updateState]);
 
   const activateDramaticMode = useCallback(() => {
     if (dramaticModeActivated.current) return;
@@ -320,210 +693,6 @@ export default function Countdown() {
     });
   }, [updateState]);
 
-  const triggerEasterEgg = useCallback((eggName) => {
-    if (state.easterEggsFound.includes(eggName)) return;
-    
-    updateState(prev => ({ 
-      easterEggsFound: [...prev.easterEggsFound, eggName] 
-    }));
-    
-    const eggAnimations = {
-      konami_code: () => {
-        updateState({ secretMode: true });
-        createFairyDust();
-        gsap.to(".time-unit", {
-          duration: 1,
-          y: -20,
-          rotation: 360,
-          stagger: 0.1,
-          ease: "back.out(1.7)",
-          repeat: 1,
-          yoyo: true
-        });
-      },
-      birthday_typing: () => {
-        createFairyDust();
-        gsap.to(".timer-container", {
-          duration: 1,
-          scale: 1.05,
-          backgroundColor: "rgba(255, 223, 0, 0.2)",
-          yoyo: true,
-          repeat: 2,
-          ease: "power2.inOut"
-        });
-      },
-      shake_celebration: () => {
-        updateState({ partyMode: true });
-        createFairyDust();
-        gsap.to(timerRef.current, {
-          duration: 0.2,
-          rotation: 5,
-          yoyo: true,
-          repeat: 3,
-          ease: "sine.inOut"
-        });
-      },
-      rainbow_unicorn: () => {
-        updateState({ rainbowMode: true });
-        createFairyDust();
-        gsap.to(".time-unit", {
-          duration: 2,
-          backgroundColor: `hsl(${Math.random() * 360}, 70%, 80%)`,
-          stagger: 0.2,
-          repeat: 2,
-          yoyo: true
-        });
-      },
-      disco_lights: () => {
-        createFairyDust();
-        gsap.to(timerRef.current, {
-          duration: 0.5,
-          filter: "brightness(1.5)",
-          yoyo: true,
-          repeat: 3,
-          ease: "sine.inOut"
-        });
-      },
-      cosmic_dance: () => {
-        createFairyDust();
-        gsap.to(".time-unit", {
-          duration: 1,
-          scale: 1.2,
-          yoyo: true,
-          repeat: 2,
-          stagger: 0.1,
-          ease: "elastic.out(1, 0.5)"
-        });
-      },
-      swipe_magic: () => {
-        createFairyDust();
-        gsap.to(".floating-element", {
-          duration: 2,
-          x: "100vw",
-          rotation: 360,
-          stagger: 0.2,
-          ease: "power2.out"
-        });
-      },
-      comfort_mode: () => {
-        updateState({ comfortMode: true });
-        createFairyDust();
-        gsap.to("body", {
-          duration: 2,
-          background: "linear-gradient(135deg, #e0f7fa, #f8bbd0, #fff9c4)",
-          ease: "sine.inOut"
-        });
-      },
-      fairy_dust: () => {
-        updateState({ fairyDustMode: true });
-        createFairyDust();
-      }
-    };
-
-    if (eggAnimations[eggName]) {
-      eggAnimations[eggName]();
-    }
-
-    // Show notification
-    const notification = document.querySelector('.easter-egg-notification');
-    if (notification) {
-      gsap.to(notification, {
-        opacity: 1,
-        y: 0,
-        duration: 0.5,
-        onComplete: () => {
-          setTimeout(() => {
-            gsap.to(notification, {
-              opacity: 0,
-              y: -50,
-              duration: 0.5
-            });
-          }, 3000);
-        }
-      });
-    }
-  }, [state.easterEggsFound, createFairyDust, updateState]);
-
-  // Event handlers - FIXED WITH event.preventDefault()
-  const handleKeyPress = useCallback((event) => {
-    const newSequence = [...state.keySequence, event.code].slice(-10);
-    updateState({ keySequence: newSequence });
-    
-    if (newSequence.join(',') === secretSequences.konami.join(',')) {
-      triggerEasterEgg('konami_code');
-    }
-    if (newSequence.join(',') === secretSequences.birthday.join(',')) {
-      triggerEasterEgg('birthday_typing');
-    }
-    if (newSequence.join(',') === secretSequences.comfort.join(',')) {
-      triggerEasterEgg('comfort_mode');
-    }
-  }, [state.keySequence, secretSequences, triggerEasterEgg, updateState]);
-
-  const handleShake = useCallback(() => {
-    const newShakeCount = state.shakeCount + 1;
-    updateState({ shakeCount: newShakeCount });
-    
-    if (newShakeCount >= 3) {
-      triggerEasterEgg('shake_celebration');
-      updateState({ shakeCount: 0 });
-    }
-    
-    setTimeout(() => updateState({ shakeCount: 0 }), 3000);
-  }, [state.shakeCount, triggerEasterEgg, updateState]);
-
-  const handleTouchStart = useCallback((e) => {
-    updateState({
-      touchStart: {
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY,
-        time: Date.now()
-      }
-    });
-  }, [updateState]);
-
-  const handleTouchEnd = useCallback((e) => {
-    if (!state.touchStart) return;
-    const touchEnd = {
-      x: e.changedTouches[0].clientX,
-      y: e.changedTouches[0].clientY,
-      time: Date.now()
-    };
-    const swipeDistance = {
-      x: touchEnd.x - state.touchStart.x,
-      y: touchEnd.y - state.touchStart.y
-    };
-    const swipeTime = touchEnd.time - state.touchStart.time;
-
-    if (swipeTime < 500) {
-      if (Math.abs(swipeDistance.x) > 50 && Math.abs(swipeDistance.y) < 50) {
-        if (swipeDistance.x > 0) triggerEasterEgg('swipe_magic');
-      }
-      if (Math.abs(swipeDistance.y) > 50 && Math.abs(swipeDistance.x) < 50) {
-        if (swipeDistance.y < 0) triggerEasterEgg('rainbow_unicorn');
-        else if (swipeDistance.y > 0) triggerEasterEgg('fairy_dust');
-      }
-    }
-    updateState({ touchStart: null });
-  }, [state.touchStart, triggerEasterEgg, updateState]);
-
-  const handleTap = useCallback((isLongPress = false) => {
-    const tapType = isLongPress ? 2 : 1;
-    const newPattern = [...state.tapPattern, tapType].slice(-3);
-    updateState({ tapPattern: newPattern });
-
-    const patternString = newPattern.join(',');
-    if (patternString === tapPatterns.rainbow.join(',')) triggerEasterEgg('rainbow_unicorn');
-    else if (patternString === tapPatterns.disco.join(',')) triggerEasterEgg('disco_lights');
-    else if (patternString === tapPatterns.cosmic.join(',')) triggerEasterEgg('cosmic_dance');
-    else if (patternString === tapPatterns.comfort.join(',')) triggerEasterEgg('comfort_mode');
-    else if (patternString === tapPatterns.fairy.join(',')) triggerEasterEgg('fairy_dust');
-
-    setTimeout(() => updateState({ tapPattern: [] }), 2000);
-  }, [state.tapPattern, tapPatterns, triggerEasterEgg, updateState]);
-
-  const handleLongPress = useCallback(() => handleTap(true), [handleTap]);
-
   const getRandomSurprise = useCallback(() => {
     if (funnyImages.length === 0) return { image: "", message: "You're amazing! 😊" };
     const randomImageIndex = Math.floor(Math.random() * funnyImages.length);
@@ -535,7 +704,6 @@ export default function Countdown() {
     };
   }, [funnyImages, comfortingMessages]);
 
-  // FIXED: Added event.preventDefault() to prevent page refresh
   const redirectToBirthdayPage = useCallback((event) => {
     if (event) {
       event.preventDefault();
@@ -544,7 +712,6 @@ export default function Countdown() {
     navigate("/birthday-special");
   }, [navigate]);
 
-  // FIXED: Added event.preventDefault() to prevent page refresh
   const handleSurpriseClick = useCallback((event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -568,7 +735,6 @@ export default function Countdown() {
     }
   }, [state.isButtonEnabled, getRandomSurprise, redirectToBirthdayPage, updateState]);
 
-  // FIXED: Added event.preventDefault() to prevent page refresh
   const closeSurpriseModal = useCallback((event) => {
     if (event) {
       event.preventDefault();
@@ -623,61 +789,38 @@ export default function Countdown() {
       );
     }
 
-    // Event listeners
-    window.addEventListener('keydown', handleKeyPress);
-    
-    // Shake detection
+    // Mobile shake detection
     let lastAcceleration = { x: 0, y: 0, z: 0 };
     const handleDeviceMotion = (event) => {
       const acceleration = event.accelerationIncludingGravity;
       if (!acceleration) return;
+      
       const deltaX = Math.abs(acceleration.x - lastAcceleration.x);
       const deltaY = Math.abs(acceleration.y - lastAcceleration.y);
       const deltaZ = Math.abs(acceleration.z - lastAcceleration.z);
-      if (deltaX + deltaY + deltaZ > 25) handleShake();
+      
+      const totalMovement = deltaX + deltaY + deltaZ;
+      
+      if (totalMovement > 25) {
+        console.log(`📱 Shake detected: ${totalMovement}`);
+        handleShake();
+      }
+      
       lastAcceleration = acceleration;
     };
     
-    if (window.DeviceMotionEvent) window.addEventListener('devicemotion', handleDeviceMotion);
-
-    // Tap detection
-    let lastClickTime = 0;
-    const handleDoubleClick = (event) => {
-      event.preventDefault();
-      const currentTime = new Date().getTime();
-      if (currentTime - lastClickTime < 300) handleTap();
-      lastClickTime = currentTime;
-    };
-    
-    document.addEventListener('click', handleDoubleClick);
-
-    let pressTimer;
-    const handlePressStart = (event) => {
-      event.preventDefault();
-      pressTimer = setTimeout(handleLongPress, 800);
-    };
-    const handlePressEnd = (event) => {
-      event.preventDefault();
-      clearTimeout(pressTimer);
-    };
-    
-    document.addEventListener('mousedown', handlePressStart);
-    document.addEventListener('mouseup', handlePressEnd);
-    document.addEventListener('touchstart', handlePressStart);
-    document.addEventListener('touchend', handlePressEnd);
+    if (window.DeviceMotionEvent) {
+      window.addEventListener('devicemotion', handleDeviceMotion);
+    }
 
     return () => {
       intervalsRef.current.forEach(interval => clearInterval(interval));
       intervalsRef.current = [];
-      window.removeEventListener('keydown', handleKeyPress);
-      window.removeEventListener('devicemotion', handleDeviceMotion);
-      document.removeEventListener('click', handleDoubleClick);
-      document.removeEventListener('mousedown', handlePressStart);
-      document.removeEventListener('mouseup', handlePressEnd);
-      document.removeEventListener('touchstart', handlePressStart);
-      document.removeEventListener('touchend', handlePressEnd);
+      if (window.DeviceMotionEvent) {
+        window.removeEventListener('devicemotion', handleDeviceMotion);
+      }
     };
-  }, [calculateTimeLeft, isLastHour, isLast3Hours, activateComfortMode, activateDramaticMode, handleKeyPress, handleShake, handleTap, handleLongPress]);
+  }, [calculateTimeLeft, isLastHour, isLast3Hours, activateComfortMode, activateDramaticMode, handleShake]);
 
   // Birthday celebration effect
   useEffect(() => {
@@ -721,8 +864,7 @@ export default function Countdown() {
   // Destructure state for cleaner access
   const { 
     timeLeft, isButtonEnabled, showSurprise, currentImage, currentMessage, 
-    easterEggsFound, secretMode, rainbowMode, partyMode, dramaticMode, 
-    comfortMode, fairyDustMode, magicalMessages 
+    magicalMessages, comfortMode, dramaticMode, nightMode
   } = state;
 
   return (
@@ -730,36 +872,48 @@ export default function Countdown() {
       className={`min-h-screen flex items-center justify-center p-4 transition-all duration-1000 ${
         comfortMode ? 'comfort-mode' :
         dramaticMode ? 'emergency-mode' :
-        secretMode ? 'bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600' :
-        partyMode ? 'bg-gradient-to-br from-yellow-400 via-red-400 to-pink-500' :
-        rainbowMode ? 'bg-gradient-to-br from-red-400 via-green-400 to-blue-400' :
+        nightMode ? 'night-mode' :
         'bg-gradient-to-br from-pink-400 via-purple-500 to-indigo-600'
       }`}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      onClick={handleMultiTap}
     >
-      {/* Fairy Dust Container */}
-      <div ref={fairyContainerRef} className="fixed inset-0 pointer-events-none z-40" />
+      {/* Animation Container */}
+      <div ref={fairyContainerRef} className="fixed inset-0 pointer-events-none z-50" />
 
-      {/* Comfort Mode Alert */}
+      {/* Hidden Spot Easter Egg - Larger and more visible for mobile */}
+      <div 
+        className="fixed top-6 left-6 w-6 h-6 bg-yellow-400 rounded-full opacity-60 cursor-pointer z-50 shadow-lg"
+        onClick={handleHiddenSpotTap}
+        title="Tap me 3 times!"
+        style={{ touchAction: 'manipulation' }}
+      />
+
+      {/* Mode Alerts */}
       {comfortMode && (
-        <div className="comfort-alert fixed top-0 left-0 w-full bg-gradient-to-r from-pink-400 to-blue-400 text-white text-center py-3 font-bold text-lg z-50">
+        <div className="comfort-alert fixed top-0 left-0 w-full bg-gradient-to-r from-pink-400 to-blue-400 text-white text-center py-3 font-bold text-lg z-40">
           💖 You're Amazing! {timeLeft.minutes}m {timeLeft.seconds}s Until Your Special Day! 💖
         </div>
       )}
 
-      {/* Dramatic Mode Alert */}
       {dramaticMode && (
-        <div className="emergency-alert fixed top-0 left-0 w-full bg-red-600 text-white text-center py-2 font-bold text-lg z-50 animate-pulse">
+        <div className="emergency-alert fixed top-0 left-0 w-full bg-red-600 text-white text-center py-2 font-bold text-lg z-40 animate-pulse">
           🚨 BIRTHDAY COUNTDOWN CRITICAL! {timeLeft.hours}h {timeLeft.minutes}m {timeLeft.seconds}s REMAINING! 🚨
         </div>
       )}
 
-      {/* Magical Floating Messages */}
+      {nightMode && (
+        <div className="night-alert fixed top-0 left-0 w-full bg-purple-600 text-white text-center py-2 font-bold text-lg z-40">
+          🌙 Late-Night Party Mode Activated! ✨
+        </div>
+      )}
+
+      {/* Floating Messages */}
       {magicalMessages.map(message => (
         <div
           key={message.id}
-          className="magical-message fixed text-white text-lg font-bold text-center bg-black/30 backdrop-blur-sm px-4 py-2 rounded-full border border-white/30 z-30"
+          className="magical-message fixed text-white text-lg font-bold text-center bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full border border-white/30 z-30 shadow-lg"
           style={{
             top: message.top,
             left: message.left,
@@ -770,39 +924,16 @@ export default function Countdown() {
         </div>
       ))}
 
-      {/* Easter Egg Notifications */}
-      <div className="easter-egg-notification fixed top-4 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-purple-900 px-6 py-3 rounded-full font-bold text-lg shadow-2xl opacity-0 -translate-y-50 z-50">
-        🥚 Easter Egg Found! Check the collection! 🎉
-      </div>
-
-      {/* Easter Egg Collection */}
-      {easterEggsFound.length > 0 && (
-        <div className="fixed top-4 right-4 bg-white/20 backdrop-blur-lg rounded-lg p-3 border border-white/30 max-w-xs">
-          <p className="text-white text-sm font-bold mb-2">🎯 Easter Eggs: {easterEggsFound.length}/9</p>
-          <div className="flex flex-wrap gap-1">
-            {easterEggsFound.map(egg => (
-              <span key={egg} className="text-xs bg-green-500 text-white px-2 py-1 rounded">
-                {easterEggs[egg]?.name}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Easter Egg Instructions */}
-      <div className="fixed bottom-4 left-4 bg-black/50 text-white px-3 py-2 rounded text-sm max-w-xs">
-        <p className="font-bold">Easter Egg Hunt! 🥚</p>
-        <p className="text-xs mt-1">
-          <strong>Desktop:</strong><br/>
-          • Konami code: ↑↑↓↓←→←→BA<br/>
-          • Type "BIRTHDAY"<br/>
-          • Type "COMFORT"<br/><br/>
-          <strong>Mobile:</strong><br/>
-          • Shake phone<br/>
-          • Swipe right →<br/>
-          • Swipe up ↑ / down ↓<br/>
-          • Tap patterns (S=short, L=long)
-        </p>
+      {/* Easter Egg Instructions - Mobile Friendly */}
+      <div className="fixed bottom-4 left-4 bg-black/70 text-white px-4 py-3 rounded-lg text-sm max-w-xs z-30">
+        <p className="font-bold mb-2">🎮 Easter Eggs:</p>
+        <ul className="text-xs space-y-1">
+          <li>• Tap cake 3 times</li>
+          <li>• Shake phone</li>
+          <li>• Tap yellow dot 3 times</li>
+          <li>• Tap anywhere 5 times</li>
+          <li>• Swipe down</li>
+        </ul>
       </div>
 
       {/* Main Timer Container */}
@@ -813,94 +944,68 @@ export default function Countdown() {
             ? 'bg-white/40 border-white/50 comfort-glow' 
             : dramaticMode 
             ? 'bg-red-500/20 border-red-500/50 emergency-glow'
+            : nightMode
+            ? 'bg-gray-800/60 border-purple-500/50 night-glow'
             : 'bg-gradient-to-br from-white/20 via-pink-100/20 to-purple-100/20 border-white/30'
         }`}
+        onClick={handleCakeTap}
+        style={{ touchAction: 'manipulation' }}
       >
-        {/* Header */}
+        {/* Header with Title Tap */}
         <div className="text-center space-y-3">
-          <div className="flex justify-center items-center space-x-3">
-            <span className="text-3xl">
-              {comfortMode ? '💖' :
-               dramaticMode ? '🚨' : 
-               secretMode ? '🎮' : 
-               partyMode ? '📱' : 
-               rainbowMode ? '🌈' : '🎂'}
-            </span>
+          <div 
+            className="flex justify-center items-center space-x-3 cursor-pointer"
+            onClick={handleTitleTap}
+            style={{ touchAction: 'manipulation' }}
+          >
+            <span className="text-3xl">🎂</span>
             <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
-              {comfortMode ? 'Almost There, Superstar! 💫' :
+              {comfortMode ? 'Almost There! 💫' :
                dramaticMode ? 'EMERGENCY COUNTDOWN!' :
-               secretMode ? 'KONAMI CODE!' : 
-               partyMode ? 'SHAKE IT!' : 
-               rainbowMode ? 'RAINBOW MODE!' : 
+               nightMode ? 'LATE-NIGHT PARTY! 🌙' :
                'Birthday Countdown!'}
             </h1>
-            <span className="text-3xl">
-              {comfortMode ? '⭐' :
-               dramaticMode ? '⚠️' :
-               secretMode ? '👾' : 
-               partyMode ? '🎉' : 
-               rainbowMode ? '🦄' : '🎁'}
-            </span>
+            <span className="text-3xl">🎁</span>
           </div>
           <p className="text-white text-base md:text-lg max-w-md font-medium">
             {comfortMode 
-              ? `You're doing amazing! ${timeLeft.minutes}m ${timeLeft.seconds}s until your special day begins! 💖` 
+              ? `You're doing amazing! ${timeLeft.minutes}m ${timeLeft.seconds}s to go! 💖` 
               : dramaticMode 
-              ? `🚨 CRITICAL: ${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s UNTIL BIRTHDAY! 🚨` 
-              : secretMode 
-              ? "You found the legendary Konami code! Legendary! 🎮" 
-              : partyMode
-              ? "Woohoo! Shake it like a polaroid picture! 📱"
-              : "Counting down to November 2nd, 2025! Get ready for an amazing day!"
+              ? `🚨 CRITICAL: ${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s LEFT! 🚨` 
+              : nightMode
+              ? "The party never stops! Keep celebrating! 🌟"
+              : "Counting down to November 4th, 2025! Get ready! 🎈"
             }
           </p>
           <p className="text-pink-200 text-sm md:text-base">
-            For my awesome little sister! {comfortMode ? '💖✨💖' : rainbowMode ? '✨🌈✨' : '💖'}
+            For my awesome little sister! 💖
           </p>
         </div>
 
-        {/* Time Units */}
+        {/* Time Units with Number Tap */}
         <div className="flex flex-wrap justify-center gap-3 md:gap-4">
-          <TimeUnit 
-            label="Days" 
-            value={timeLeft.days} 
-            color="from-purple-500 to-blue-500"
-            unitRef={daysRef}
-            comfortMode={comfortMode}
-            dramaticMode={dramaticMode}
-            rainbowMode={rainbowMode}
-            partyMode={partyMode}
-          />
-          <TimeUnit 
-            label="Hours" 
-            value={timeLeft.hours} 
-            color="from-pink-500 to-purple-500"
-            unitRef={hoursRef}
-            comfortMode={comfortMode}
-            dramaticMode={dramaticMode}
-            rainbowMode={rainbowMode}
-            partyMode={partyMode}
-          />
-          <TimeUnit 
-            label="Minutes" 
-            value={timeLeft.minutes} 
-            color="from-indigo-500 to-blue-400"
-            unitRef={minutesRef}
-            comfortMode={comfortMode}
-            dramaticMode={dramaticMode}
-            rainbowMode={rainbowMode}
-            partyMode={partyMode}
-          />
-          <TimeUnit 
-            label="Seconds" 
-            value={timeLeft.seconds} 
-            color="from-green-400 to-teal-400"
-            unitRef={secondsRef}
-            comfortMode={comfortMode}
-            dramaticMode={dramaticMode}
-            rainbowMode={rainbowMode}
-            partyMode={partyMode}
-          />
+          {[daysRef, hoursRef, minutesRef, secondsRef].map((ref, index) => (
+            <div 
+              key={index} 
+              onClick={handleNumberTap}
+              style={{ touchAction: 'manipulation' }}
+              className="cursor-pointer"
+            >
+              <TimeUnit 
+                label={["Days", "Hours", "Minutes", "Seconds"][index]}
+                value={[timeLeft.days, timeLeft.hours, timeLeft.minutes, timeLeft.seconds][index]}
+                color={[
+                  "from-purple-500 to-blue-500",
+                  "from-pink-500 to-purple-500", 
+                  "from-indigo-500 to-blue-400",
+                  "from-green-400 to-teal-400"
+                ][index]}
+                unitRef={ref}
+                comfortMode={comfortMode}
+                dramaticMode={dramaticMode}
+              />
+            </div>
+          ))}
         </div>
 
         {/* Progress Bar */}
@@ -916,6 +1021,8 @@ export default function Countdown() {
                   ? 'bg-gradient-to-r from-pink-400 to-blue-400' 
                   : dramaticMode 
                   ? 'bg-gradient-to-r from-red-500 via-yellow-500 to-red-500 animate-pulse'
+                  : nightMode
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-500'
                   : 'bg-gradient-to-r from-pink-500 to-purple-500'
               }`}
               style={{
@@ -927,10 +1034,9 @@ export default function Countdown() {
 
         {/* Buttons Container */}
         <div className="flex flex-col gap-3 mt-4 w-full max-w-md items-center">
-          {/* Main Surprise Button */}
           <button 
             onClick={handleSurpriseClick}
-            type="button" // ← Added type="button" to prevent form submission
+            type="button"
             className={`surprise-btn w-full px-5 py-3 rounded-lg font-semibold shadow-lg transform transition-all duration-300 ${
               isButtonEnabled 
                 ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:scale-105 cursor-pointer' 
@@ -938,56 +1044,59 @@ export default function Countdown() {
                 ? 'bg-gradient-to-r from-pink-400 to-blue-400 text-white cursor-pointer hover:scale-105 comfort-glow'
                 : dramaticMode
                 ? 'bg-red-500 text-white cursor-pointer hover:scale-105 animate-pulse'
+                : nightMode
+                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white cursor-pointer hover:scale-105 night-glow'
                 : 'bg-white/30 text-white cursor-pointer hover:scale-105'
             }`}
+            style={{ touchAction: 'manipulation' }}
           >
-            <span className="fas fa-gift mr-2" />
             {comfortMode ? '💖 You Are Amazing! 💖' : 
              dramaticMode ? '🚨 GET READY! 🚨' : 
+             nightMode ? '🌙 Party Surprise! 🌙' :
              isButtonEnabled ? 'View Surprises!' : 'Get Random Surprise!'}
           </button>
 
-          {/* Birthday Special Page Button */}
           {isButtonEnabled && (
             <button 
               ref={birthdayButtonRef}
               onClick={redirectToBirthdayPage}
-              type="button" // ← Added type="button" to prevent form submission
+              type="button"
               className="birthday-special-btn w-full px-5 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-lg font-bold shadow-lg transform hover:scale-105 transition-all duration-300 hover:shadow-xl border-2 border-yellow-300"
+              style={{ touchAction: 'manipulation' }}
             >
-              <span className="fas fa-star mr-2" />
               🎊 Enter Birthday Wonderland! 🎊
-              <span className="fas fa-star ml-2" />
             </button>
           )}
         </div>
 
-        {/* Easter Egg Instructions */}
-        {!isButtonEnabled && !dramaticMode && !comfortMode && (
+        {/* Easter Egg Hint */}
+        {!isButtonEnabled && !dramaticMode && !comfortMode && !nightMode && (
           <div className="text-center p-3 bg-white/10 rounded-xl backdrop-blur-sm max-w-md">
             <p className="text-white text-sm italic">
-              Discover hidden easter eggs! Try gestures, shaking, or secret codes! 🥚
+              Try tapping, shaking, or swiping for surprises! 🎉
             </p>
           </div>
         )}
 
-        {/* Message */}
+        {/* Status Message */}
         <div className="text-center p-3 bg-white/10 rounded-xl backdrop-blur-sm">
           <p className="text-white text-sm md:text-base italic">
             {comfortMode 
-              ? `You're handling the wait like a champion! So proud of you! 💫` 
+              ? `You're handling the wait like a champion! 💫` 
               : dramaticMode
               ? `🚨 ALERT: ${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s REMAINING! 🚨`
+              : nightMode
+              ? `The stars are shining bright for you! ✨ ${timeLeft.days} days to go!`
               : isButtonEnabled 
               ? "🎉 IT'S YOUR BIRTHDAY! Click to celebrate! 🎉" 
-              : `Only ${timeLeft.days} days until November 2nd, 2025! 🎈`
+              : `Only ${timeLeft.days} days until November 4th, 2025! 🎈`
             }
           </p>
         </div>
 
         {/* Floating Elements */}
         <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
-          {[...Array(comfortMode ? 15 : dramaticMode ? 20 : 12)].map((_, i) => (
+          {[...Array(comfortMode ? 15 : dramaticMode ? 20 : nightMode ? 25 : 12)].map((_, i) => (
             <div
               key={i}
               className="floating-element absolute text-lg opacity-50"
@@ -995,14 +1104,16 @@ export default function Countdown() {
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
                 animationDelay: `${Math.random() * 2}s`,
-                fontSize: comfortMode ? '1.2rem' : dramaticMode ? '1.5rem' : '1rem',
-                opacity: comfortMode ? 0.6 : dramaticMode ? 0.8 : 0.5
+                fontSize: comfortMode ? '1.2rem' : dramaticMode ? '1.5rem' : nightMode ? '1.1rem' : '1rem',
+                opacity: comfortMode ? 0.6 : dramaticMode ? 0.8 : nightMode ? 0.7 : 0.5
               }}
             >
               {comfortMode 
                 ? ['💖', '⭐', '✨', '🌟', '🎀'][i % 5]
                 : dramaticMode 
                 ? ['🚨', '⚠️', '💥', '🎊', '🔥', '⚡'][i % 6]
+                : nightMode
+                ? ['🌙', '⭐', '✨', '🌟', '💫', '🌠'][i % 6]
                 : ['🎈', '🎂', '🎁', '⭐'][i % 4]
               }
             </div>
@@ -1012,7 +1123,10 @@ export default function Countdown() {
 
       {/* SURPRISE MODAL */}
       {showSurprise && (
-        <div className="fixed inset-0 bg-black/95 flex flex-col items-center justify-center z-50 p-4">
+        <div 
+          className="fixed inset-0 bg-black/95 flex flex-col items-center justify-center z-50 p-4"
+          style={{ touchAction: 'manipulation' }}
+        >
           <div 
             ref={surpriseModalRef}
             className="w-full h-full flex flex-col items-center justify-center max-w-4xl mx-auto"
@@ -1049,16 +1163,18 @@ export default function Countdown() {
             <div className="w-full flex flex-col sm:flex-row gap-3 justify-center items-center px-4 pb-4 md:pb-8">
               <button 
                 onClick={isButtonEnabled ? redirectToBirthdayPage : closeSurpriseModal}
-                type="button" // ← Added type="button" to prevent form submission
+                type="button"
                 className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-xl font-bold text-base md:text-lg hover:scale-105 transition-transform min-h-[50px] flex items-center justify-center"
+                style={{ touchAction: 'manipulation' }}
               >
                 {isButtonEnabled ? "Let's Go! 🎊" : "Close"}
               </button>
               {isButtonEnabled && (
                 <button 
                   onClick={redirectToBirthdayPage}
-                  type="button" // ← Added type="button" to prevent form submission
+                  type="button"
                   className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-xl font-bold text-base md:text-lg hover:scale-105 transition-transform min-h-[50px] flex items-center justify-center"
+                  style={{ touchAction: 'manipulation' }}
                 >
                   Special Page ✨
                 </button>
@@ -1089,10 +1205,21 @@ export default function Countdown() {
           50% { box-shadow: 0 0 50px rgba(135, 206, 235, 0.5); }
         }
         
+        @keyframes night-glow {
+          0%, 100% { box-shadow: 0 0 30px rgba(147, 51, 234, 0.5); }
+          50% { box-shadow: 0 0 50px rgba(236, 72, 153, 0.5); }
+        }
+        
         @keyframes fairy-dust {
           0% { transform: translateY(0) rotate(0deg); opacity: 0; }
           50% { opacity: 1; }
           100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+        
+        @keyframes confetti-fall {
+          0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+          50% { opacity: 1; }
+          100% { transform: translateY(-200px) rotate(720deg); opacity: 0; }
         }
         
         .floating-element {
@@ -1111,6 +1238,10 @@ export default function Countdown() {
           animation: comfort-glow 2s ease-in-out infinite;
         }
         
+        .night-glow {
+          animation: night-glow 2s ease-in-out infinite;
+        }
+        
         .emergency-alert {
           animation: emergency-pulse 0.5s ease-in-out infinite;
         }
@@ -1121,6 +1252,18 @@ export default function Countdown() {
         
         .fairy-dust {
           animation: fairy-dust 3s ease-out forwards;
+        }
+        
+        .confetti {
+          animation: confetti-fall 2s ease-out forwards;
+        }
+        
+        .flying-emoji {
+          animation: fairy-dust 3s ease-out forwards;
+        }
+        
+        .floating-star {
+          animation: float 4s ease-in-out infinite;
         }
         
         .magical-message {
