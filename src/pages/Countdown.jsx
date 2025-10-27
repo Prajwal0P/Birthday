@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { gsap } from "gsap";
 import { images } from "../images.js";
 
-// Memoized TimeUnit component
-const TimeUnit = React.memo(({ label, value, color, unitRef, comfortMode, dramaticMode, rainbowMode, partyMode }) => {
+// TimeUnit component - back to original but enhanced
+const TimeUnit = React.memo(({ label, value, color, unitRef, comfortMode, dramaticMode }) => {
   const gradientMap = useMemo(() => ({
     "from-purple-500 to-blue-500": "linear-gradient(135deg, #8b5cf6, #3b82f6)",
     "from-pink-500 to-purple-500": "linear-gradient(135deg, #ec4899, #8b5cf6)",
@@ -14,11 +14,9 @@ const TimeUnit = React.memo(({ label, value, color, unitRef, comfortMode, dramat
 
   const backgroundStyle = useMemo(() => {
     if (comfortMode) return `linear-gradient(135deg, #ffd6e0, #c4f0ff)`;
-    if (rainbowMode) return `linear-gradient(45deg, hsl(${Math.random() * 360}, 100%, 60%), hsl(${Math.random() * 360}, 100%, 60%))`;
-    if (partyMode) return `linear-gradient(135deg, hsl(${value * 15}, 80%, 60%), hsl(${value * 15 + 60}, 80%, 60%))`;
     if (dramaticMode) return `linear-gradient(135deg, hsl(${Math.random() * 360}, 100%, 60%), hsl(${Math.random() * 360}, 100%, 60%))`;
     return 'linear-gradient(135deg, rgba(17, 24, 39, 0.9), rgba(31, 41, 55, 0.9))';
-  }, [comfortMode, rainbowMode, partyMode, dramaticMode, value]);
+  }, [comfortMode, dramaticMode]);
 
   const innerBackground = useMemo(() => {
     if (comfortMode) return 'linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.8))';
@@ -144,7 +142,7 @@ export default function Countdown() {
     "The world is a better place because you're in it! 🌎"
   ], []);
 
-  // Memoized calculations
+  // FIXED: Move these functions BEFORE useEffect
   const calculateTimeLeft = useCallback(() => {
     const targetDate = new Date("2025-11-04T00:00:00");
     const now = new Date();
@@ -285,7 +283,6 @@ export default function Countdown() {
       magicalMessages: [...prev.magicalMessages, newMessage] 
     }));
 
-    // Auto-remove after 5 seconds
     setTimeout(() => {
       updateState(prev => ({
         magicalMessages: prev.magicalMessages.filter(msg => msg.id !== newMessage.id)
@@ -293,7 +290,7 @@ export default function Countdown() {
     }, 5000);
   }, [updateState]);
 
-  // Easter Egg Functions - SIMPLIFIED AND MOBILE-FRIENDLY
+  // All original easter egg functions
   const triggerTapCakeSurprise = useCallback(() => {
     console.log("🎂 Cake tap surprise triggered!");
     createConfetti();
@@ -417,7 +414,6 @@ export default function Countdown() {
       ease: "sine.inOut"
     });
 
-    // Create floating stars
     if (fairyContainerRef.current) {
       const container = fairyContainerRef.current;
       const starCount = 25;
@@ -449,25 +445,22 @@ export default function Countdown() {
     }
   }, [updateState, showFloatingMessage]);
 
-  // Mobile-friendly event handlers
+  // All original event handlers
   const handleCakeTap = useCallback((event) => {
     event.preventDefault();
     event.stopPropagation();
     
     const currentTime = Date.now();
     if (currentTime - lastTapTimeRef.current > 1000) {
-      // Reset if more than 1 second between taps
       updateState({ tapCount: 1 });
     } else {
-      // Increment tap count
       updateState(prev => ({ tapCount: prev.tapCount + 1 }));
     }
     lastTapTimeRef.current = currentTime;
 
     console.log(`🎂 Cake taps: ${state.tapCount + 1}`);
 
-    // Trigger after 3 taps (more mobile-friendly)
-    if (state.tapCount >= 2) { // 3 taps total (0,1,2)
+    if (state.tapCount >= 2) {
       triggerTapCakeSurprise();
       updateState({ tapCount: 0 });
     }
@@ -487,14 +480,13 @@ export default function Countdown() {
 
     console.log(`🔍 Hidden spot taps: ${state.hiddenSpotTapCount + 1}`);
 
-    if (state.hiddenSpotTapCount >= 2) { // 3 taps
+    if (state.hiddenSpotTapCount >= 2) {
       triggerHiddenSpotSurprise();
       updateState({ hiddenSpotTapCount: 0 });
     }
   }, [state.hiddenSpotTapCount, triggerHiddenSpotSurprise, updateState]);
 
   const handleMultiTap = useCallback((event) => {
-    // Don't trigger if clicking buttons
     if (event.target.closest('button')) return;
     
     event.preventDefault();
@@ -510,7 +502,7 @@ export default function Countdown() {
 
     console.log(`👆 Multi-taps: ${state.multiTapCount + 1}`);
 
-    if (state.multiTapCount >= 4) { // 5 taps total
+    if (state.multiTapCount >= 4) {
       triggerMultiTapSurprise();
       updateState({ multiTapCount: 0 });
     }
@@ -535,7 +527,6 @@ export default function Countdown() {
       return { ...prev, titleTapSequence: newSequence };
     });
 
-    // Clear sequence after 3 seconds
     setTimeout(() => updateState({ titleTapSequence: [] }), 3000);
   }, [triggerSecretSequence, updateState]);
 
@@ -553,29 +544,26 @@ export default function Countdown() {
 
     console.log(`⏰ Number taps: ${state.numberTapCount + 1}`);
 
-    if (state.numberTapCount >= 3) { // 4 taps
+    if (state.numberTapCount >= 3) {
       triggerCountdownEasterEgg();
       updateState({ numberTapCount: 0 });
     }
   }, [state.numberTapCount, triggerCountdownEasterEgg, updateState]);
 
-  // Mobile-friendly shake detection
   const handleShake = useCallback(() => {
     const newShakeCount = state.shakeCount + 1;
     updateState({ shakeCount: newShakeCount });
     
     console.log(`📱 Shake count: ${newShakeCount}`);
 
-    if (newShakeCount >= 2) { // 3 shakes
+    if (newShakeCount >= 2) {
       triggerShakeSurprise();
       updateState({ shakeCount: 0 });
     }
     
-    // Reset shake count after 3 seconds
     setTimeout(() => updateState({ shakeCount: 0 }), 3000);
   }, [state.shakeCount, triggerShakeSurprise, updateState]);
 
-  // Mobile-friendly swipe detection
   const handleTouchStart = useCallback((e) => {
     touchStartRef.current = {
       x: e.touches[0].clientX,
@@ -603,7 +591,7 @@ export default function Countdown() {
     console.log(`⬇️ Swipe detected: ${Math.abs(swipeDistance.y)}px in ${swipeTime}ms`);
 
     if (swipeTime < 500 && Math.abs(swipeDistance.y) > 100 && Math.abs(swipeDistance.x) < 50) {
-      if (swipeDistance.y > 0) { // Swipe down
+      if (swipeDistance.y > 0) {
         triggerSwipeSurprise();
       }
     }
@@ -611,7 +599,7 @@ export default function Countdown() {
     touchStartRef.current = null;
   }, [triggerSwipeSurprise]);
 
-  // Original functions (keep these)
+  // All original mode functions
   const activateComfortMode = useCallback(() => {
     if (comfortModeActivated.current) return;
     comfortModeActivated.current = true;
@@ -753,7 +741,7 @@ export default function Countdown() {
     }
   }, [updateState]);
 
-  // Main effects
+  // FIXED: useEffect now works because calculateTimeLeft is defined above
   useEffect(() => {
     const timer = setInterval(() => {
       const newTimeLeft = calculateTimeLeft();
@@ -765,7 +753,6 @@ export default function Countdown() {
 
     intervalsRef.current.push(timer);
 
-    // Initial animations
     if (timerRef.current) {
       gsap.fromTo(timerRef.current, 
         { opacity: 0, y: 50 },
@@ -789,7 +776,6 @@ export default function Countdown() {
       );
     }
 
-    // Mobile shake detection
     let lastAcceleration = { x: 0, y: 0, z: 0 };
     const handleDeviceMotion = (event) => {
       const acceleration = event.accelerationIncludingGravity;
@@ -822,7 +808,6 @@ export default function Countdown() {
     };
   }, [calculateTimeLeft, isLastHour, isLast3Hours, activateComfortMode, activateDramaticMode, handleShake]);
 
-  // Birthday celebration effect
   useEffect(() => {
     if (state.isButtonEnabled) {
       createFairyDust();
@@ -861,7 +846,6 @@ export default function Countdown() {
     }
   }, [state.isButtonEnabled, createFairyDust]);
 
-  // Destructure state for cleaner access
   const { 
     timeLeft, isButtonEnabled, showSurprise, currentImage, currentMessage, 
     magicalMessages, comfortMode, dramaticMode, nightMode
@@ -882,7 +866,7 @@ export default function Countdown() {
       {/* Animation Container */}
       <div ref={fairyContainerRef} className="fixed inset-0 pointer-events-none z-50" />
 
-      {/* Hidden Spot Easter Egg - Larger and more visible for mobile */}
+      {/* Hidden Spot Easter Egg */}
       <div 
         className="fixed top-6 left-6 w-6 h-6 bg-yellow-400 rounded-full opacity-60 cursor-pointer z-50 shadow-lg"
         onClick={handleHiddenSpotTap}
@@ -924,7 +908,7 @@ export default function Countdown() {
         </div>
       ))}
 
-      {/* Easter Egg Instructions - Mobile Friendly */}
+      {/* Easter Egg Instructions */}
       <div className="fixed bottom-4 left-4 bg-black/70 text-white px-4 py-3 rounded-lg text-sm max-w-xs z-30">
         <p className="font-bold mb-2">🎮 Easter Eggs:</p>
         <ul className="text-xs space-y-1">
