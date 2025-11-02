@@ -118,8 +118,13 @@ export default function Countdown() {
   const unicornModeActivated = useRef(false);
   const intervalsRef = useRef([]);
   
-  // Simple tap tracking
+  // Mobile-specific refs
   const lastTapTimeRef = useRef(0);
+  const longPressTimerRef = useRef(null);
+  const shakeLastTimeRef = useRef(0);
+  const shakeLastXRef = useRef(null);
+  const shakeLastYRef = useRef(null);
+  const shakeLastZRef = useRef(null);
 
   // Memoized constants with more magical content
   const funnyImages = useMemo(() => images || [], []);
@@ -244,22 +249,26 @@ export default function Countdown() {
     });
   }, []);
 
-  // SIMPLIFIED EASTER EGGS - Mobile Friendly
+  // FIXED MOBILE EASTER EGGS
 
-  // 1. Triple Tap on Title (Easy to discover)
+  // 1. Fixed Triple Tap on Title
   const handleTitleTap = useCallback((event) => {
-    event.preventDefault();
     event.stopPropagation();
     
     const currentTime = Date.now();
-    if (currentTime - lastTapTimeRef.current > 1000) {
+    const timeDiff = currentTime - lastTapTimeRef.current;
+    
+    if (timeDiff > 1000) {
+      // Reset if too much time passed
       updateState({ tapCount: 1 });
     } else {
       updateState(prev => ({ tapCount: prev.tapCount + 1 }));
     }
+    
     lastTapTimeRef.current = currentTime;
 
-    if (state.tapCount >= 2) { // Triple tap
+    // Check for triple tap (3 taps within 1 second)
+    if (state.tapCount >= 2) {
       console.log("🎉 Title triple tap easter egg!");
       createConfetti();
       showFloatingMessage("Triple tap magic! ✨ You found an easter egg!");
@@ -273,11 +282,16 @@ export default function Countdown() {
         ease: "elastic.out(1, 0.5)"
       });
     }
+
+    // Auto-reset tap count after 1 second
+    setTimeout(() => {
+      updateState({ tapCount: 0 });
+    }, 1000);
   }, [state.tapCount, createConfetti, showFloatingMessage, updateState]);
 
-  // 2. Shake Detection (Mobile-friendly)
+  // 2. FIXED Shake Detection for Mobile
   const handleShake = useCallback(() => {
-    console.log("📱 Shake easter egg!");
+    console.log("📱 Shake easter egg triggered!");
     createConfetti();
     showFloatingMessage("Whoa! Shake it! 📱✨");
     
@@ -290,11 +304,60 @@ export default function Countdown() {
     });
   }, [createConfetti, showFloatingMessage]);
 
-  // 3. Long Press on Timer (Mobile-friendly)
-  const handleLongPress = useCallback((event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    
+  // Improved shake detection
+  const setupShakeDetection = useCallback(() => {
+    if (typeof window === 'undefined' || !window.DeviceMotionEvent) {
+      console.log("Device motion not supported");
+      return;
+    }
+
+    const shakeThreshold = 15; // sensitivity
+    const minShakeInterval = 2000; // minimum time between shakes (ms)
+    let lastShakeTime = 0;
+
+    const handleDeviceMotion = (event) => {
+      const acceleration = event.accelerationIncludingGravity;
+      if (!acceleration) return;
+
+      const currentTime = Date.now();
+      
+      // Prevent too frequent shaking
+      if (currentTime - lastShakeTime < minShakeInterval) return;
+
+      const { x, y, z } = acceleration;
+      
+      // Calculate total force
+      const totalForce = Math.abs(x) + Math.abs(y) + Math.abs(z);
+      
+      // Check if it's a shake (high force)
+      if (totalForce > shakeThreshold) {
+        console.log("Shake detected with force:", totalForce);
+        lastShakeTime = currentTime;
+        handleShake();
+      }
+    };
+
+    // Request permission for iOS 13+
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+      DeviceMotionEvent.requestPermission()
+        .then(permissionState => {
+          if (permissionState === 'granted') {
+            window.addEventListener('devicemotion', handleDeviceMotion, false);
+          }
+        })
+        .catch(console.error);
+    } else {
+      // Non-iOS devices
+      window.addEventListener('devicemotion', handleDeviceMotion, false);
+    }
+
+    return () => {
+      window.removeEventListener('devicemotion', handleDeviceMotion);
+    };
+  }, [handleShake]);
+
+  // 3. FIXED Long Press for Mobile
+  const handleLongPress = useCallback(() => {
     console.log("⏰ Long press easter egg!");
     const surpriseImages = funnyImages.length > 0 ? funnyImages : [""];
     const randomImage = surpriseImages[Math.floor(Math.random() * surpriseImages.length)];
@@ -313,37 +376,42 @@ export default function Countdown() {
     }
   }, [funnyImages, updateState]);
 
-  // 4. Secret Unicorn Mode (Double tap on progress bar)
+  // Fixed Long Press Handlers
+  const handlePressStart = useCallback((event) => {
+    event.stopPropagation();
+    
+    // Clear any existing timer
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+    }
+    
+    // Set new timer for long press (800ms for better mobile experience)
+    longPressTimerRef.current = setTimeout(() => {
+      handleLongPress();
+    }, 800);
+  }, [handleLongPress]);
+
+  const handlePressEnd = useCallback((event) => {
+    event.stopPropagation();
+    
+    // Clear the long press timer if it exists
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+
+  // 4. FIXED Double Tap on Progress Bar
   const handleProgressBarTap = useCallback((event) => {
-    event.preventDefault();
     event.stopPropagation();
     
     const currentTime = Date.now();
-    if (currentTime - lastTapTimeRef.current < 500) { // Double tap
+    if (currentTime - lastTapTimeRef.current < 500) { // Double tap within 500ms
       console.log("🦄 Unicorn mode activated!");
       activateUnicornMode();
     }
     lastTapTimeRef.current = currentTime;
   }, []);
-
-  // Long press detection
-  const [pressTimer, setPressTimer] = useState(null);
-
-  const handlePressStart = useCallback((event) => {
-    event.preventDefault();
-    const timer = setTimeout(() => {
-      handleLongPress(event);
-    }, 1000); // 1 second long press
-    setPressTimer(timer);
-  }, [handleLongPress]);
-
-  const handlePressEnd = useCallback((event) => {
-    event.preventDefault();
-    if (pressTimer) {
-      clearTimeout(pressTimer);
-      setPressTimer(null);
-    }
-  }, [pressTimer]);
 
   // Mode functions
   const activateComfortMode = useCallback(() => {
@@ -431,14 +499,12 @@ export default function Countdown() {
 
   const redirectToBirthdayPage = useCallback((event) => {
     if (event) {
-      event.preventDefault();
       event.stopPropagation();
     }
     navigate("/birthday-special");
   }, [navigate]);
 
   const handleSurpriseClick = useCallback((event) => {
-    event.preventDefault();
     event.stopPropagation();
     
     if (state.isButtonEnabled) {
@@ -462,7 +528,6 @@ export default function Countdown() {
 
   const closeSurpriseModal = useCallback((event) => {
     if (event) {
-      event.preventDefault();
       event.stopPropagation();
     }
     if (surpriseModalRef.current) {
@@ -513,38 +578,18 @@ export default function Countdown() {
       );
     }
 
-    // Shake detection
-    let lastAcceleration = { x: 0, y: 0, z: 0 };
-    const handleDeviceMotion = (event) => {
-      const acceleration = event.accelerationIncludingGravity;
-      if (!acceleration) return;
-      
-      const deltaX = Math.abs(acceleration.x - lastAcceleration.x);
-      const deltaY = Math.abs(acceleration.y - lastAcceleration.y);
-      const deltaZ = Math.abs(acceleration.z - lastAcceleration.z);
-      
-      const totalMovement = deltaX + deltaY + deltaZ;
-      
-      if (totalMovement > 25) {
-        console.log(`📱 Shake detected: ${totalMovement}`);
-        handleShake();
-      }
-      
-      lastAcceleration = acceleration;
-    };
-    
-    if (window.DeviceMotionEvent) {
-      window.addEventListener('devicemotion', handleDeviceMotion);
-    }
+    // Setup shake detection
+    const cleanupShake = setupShakeDetection();
 
     return () => {
       intervalsRef.current.forEach(interval => clearInterval(interval));
       intervalsRef.current = [];
-      if (window.DeviceMotionEvent) {
-        window.removeEventListener('devicemotion', handleDeviceMotion);
+      if (cleanupShake) cleanupShake();
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
       }
     };
-  }, [calculateTimeLeft, isLastHour, isLast3Hours, activateComfortMode, activateDramaticMode, handleShake]);
+  }, [calculateTimeLeft, isLastHour, isLast3Hours, activateComfortMode, activateDramaticMode, setupShakeDetection]);
 
   useEffect(() => {
     if (state.isButtonEnabled) {
@@ -637,11 +682,11 @@ export default function Countdown() {
 
       {/* Simple Easter Egg Hint */}
       <div className="fixed bottom-4 left-4 bg-black/70 text-white px-4 py-3 rounded-lg text-sm max-w-xs z-30">
-        <p className="font-bold mb-2">🎮 Try:</p>
+        <p className="font-bold mb-2">🎮 Mobile Easter Eggs:</p>
         <ul className="text-xs space-y-1">
           <li>• Triple tap title</li>
-          <li>• Shake phone</li>
-          <li>• Long press timer</li>
+          <li>• Shake phone firmly</li>
+          <li>• Long press timer (hold)</li>
           <li>• Double tap progress bar</li>
         </ul>
       </div>
@@ -660,20 +705,21 @@ export default function Countdown() {
         }`}
         onTouchStart={handlePressStart}
         onTouchEnd={handlePressEnd}
+        onTouchCancel={handlePressEnd} // Important for mobile
         onMouseDown={handlePressStart}
         onMouseUp={handlePressEnd}
         onMouseLeave={handlePressEnd}
-        style={{ touchAction: 'manipulation' }}
+        style={{ touchAction: 'manipulation', userSelect: 'none' }}
       >
         {/* Header with Title Tap */}
         <div className="text-center space-y-3">
           <div 
-            className="flex justify-center items-center space-x-3 cursor-pointer"
+            className="flex justify-center items-center space-x-3 cursor-pointer select-none"
             onClick={handleTitleTap}
-            style={{ touchAction: 'manipulation' }}
+            style={{ touchAction: 'manipulation', userSelect: 'none' }}
           >
             <span className="text-3xl">🎂</span>
-            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent select-none">
               {comfortMode ? 'Almost There! 💫' :
                dramaticMode ? 'EMERGENCY COUNTDOWN!' :
                unicornMode ? 'UNICORN COUNTDOWN! 🦄' :
@@ -736,8 +782,12 @@ export default function Countdown() {
           />
         </div>
 
-        {/* Progress Bar */}
-        <div className="w-full max-w-md mt-2" onClick={handleProgressBarTap} style={{ touchAction: 'manipulation' }}>
+        {/* Progress Bar with Double Tap */}
+        <div 
+          className="w-full max-w-md mt-2" 
+          onClick={handleProgressBarTap} 
+          style={{ touchAction: 'manipulation', userSelect: 'none' }}
+        >
           <div className="flex justify-between text-xs text-white mb-1">
             <span>Excitement Level</span>
             <span>{Math.round(((365 - timeLeft.days) / 365) * 100)}%</span>
@@ -765,7 +815,7 @@ export default function Countdown() {
           <button 
             onClick={handleSurpriseClick}
             type="button"
-            className={`surprise-btn w-full px-5 py-3 rounded-lg font-semibold shadow-lg transform transition-all duration-300 ${
+            className={`surprise-btn w-full px-5 py-3 rounded-lg font-semibold shadow-lg transform transition-all duration-300 select-none ${
               isButtonEnabled 
                 ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:scale-105 cursor-pointer' 
                 : comfortMode
@@ -776,7 +826,7 @@ export default function Countdown() {
                 ? 'bg-gradient-to-r from-purple-400 to-pink-400 text-white cursor-pointer hover:scale-105 unicorn-glow'
                 : 'bg-white/30 text-white cursor-pointer hover:scale-105'
             }`}
-            style={{ touchAction: 'manipulation' }}
+            style={{ touchAction: 'manipulation', userSelect: 'none' }}
           >
             {comfortMode ? '💖 You Are Amazing! 💖' : 
              dramaticMode ? '🚨 GET READY! 🚨' : 
@@ -789,8 +839,8 @@ export default function Countdown() {
               ref={birthdayButtonRef}
               onClick={redirectToBirthdayPage}
               type="button"
-              className="birthday-special-btn w-full px-5 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-lg font-bold shadow-lg transform hover:scale-105 transition-all duration-300 hover:shadow-xl border-2 border-yellow-300"
-              style={{ touchAction: 'manipulation' }}
+              className="birthday-special-btn w-full px-5 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-lg font-bold shadow-lg transform hover:scale-105 transition-all duration-300 hover:shadow-xl border-2 border-yellow-300 select-none"
+              style={{ touchAction: 'manipulation', userSelect: 'none' }}
             >
               🎊 Enter Birthday Wonderland! 🎊
             </button>
@@ -996,6 +1046,11 @@ export default function Countdown() {
         
         .unicorn {
           animation: float 2s ease-in-out infinite;
+        }
+        
+        /* Prevent blue highlight on mobile taps */
+        * {
+          -webkit-tap-highlight-color: transparent;
         }
       `}</style>
     </div>
