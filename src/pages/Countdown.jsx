@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { gsap } from "gsap";
 import { images } from "../images.js";
 
-// TimeUnit component - simplified
-const TimeUnit = React.memo(({ label, value, color, unitRef, comfortMode, dramaticMode }) => {
+// Enhanced TimeUnit component with more magical elements
+const TimeUnit = React.memo(({ label, value, color, unitRef, comfortMode, dramaticMode, sparkle }) => {
   const backgroundStyle = useMemo(() => {
     if (comfortMode) return `linear-gradient(135deg, #ffd6e0, #c4f0ff)`;
     if (dramaticMode) return `linear-gradient(135deg, rgba(17, 24, 39, 0.9), rgba(31, 41, 55, 0.9))`;
@@ -37,6 +37,11 @@ const TimeUnit = React.memo(({ label, value, color, unitRef, comfortMode, dramat
           : '1px solid rgba(255, 255, 255, 0.2)'
       }}
     >
+      {/* Sparkle effect */}
+      {sparkle && (
+        <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-300 rounded-full animate-ping opacity-70"></div>
+      )}
+      
       <div 
         className="absolute inset-0 rounded-xl opacity-75"
         style={{
@@ -77,7 +82,7 @@ const TimeUnit = React.memo(({ label, value, color, unitRef, comfortMode, dramat
 export default function Countdown() {
   const navigate = useNavigate();
 
-  // State optimizations
+  // Enhanced state with more magical elements
   const [state, setState] = useState({
     timeLeft: { days: 0, hours: 0, minutes: 0, seconds: 0 },
     isButtonEnabled: false,
@@ -86,7 +91,11 @@ export default function Countdown() {
     currentMessage: "",
     magicalMessages: [],
     nightMode: false,
-    tapCount: 0
+    tapCount: 0,
+    comfortMode: false,
+    dramaticMode: false,
+    unicornMode: false,
+    sparkleUnits: { days: false, hours: false, minutes: false, seconds: false }
   });
 
   // Helper to update state
@@ -103,14 +112,16 @@ export default function Countdown() {
   const surpriseModalRef = useRef(null);
   const birthdayButtonRef = useRef(null);
   const fairyContainerRef = useRef(null);
+  const unicornRef = useRef(null);
   const comfortModeActivated = useRef(false);
   const dramaticModeActivated = useRef(false);
+  const unicornModeActivated = useRef(false);
   const intervalsRef = useRef([]);
   
   // Simple tap tracking
   const lastTapTimeRef = useRef(0);
 
-  // Memoized constants
+  // Memoized constants with more magical content
   const funnyImages = useMemo(() => images || [], []);
 
   const comfortingMessages = useMemo(() => [
@@ -118,7 +129,10 @@ export default function Countdown() {
     "Every moment brings us closer to your special magical day! ✨",
     "The birthday fairies are preparing something wonderful for you! 🧚‍♀️",
     "You make every day brighter just by being you! ☀️",
-    "So much love and happiness is waiting for you! 💖"
+    "So much love and happiness is waiting for you! 💖",
+    "The world is a better place because you're in it! 🌈",
+    "You're a shining star that brightens everyone's day! ⭐",
+    "Your birthday is going to be absolutely magical! 🎠"
   ], []);
 
   // Core functions
@@ -146,12 +160,12 @@ export default function Countdown() {
   const isLastHour = useCallback((timeLeft) => 
     timeLeft.days === 0 && timeLeft.hours === 0 && timeLeft.minutes < 60, []);
 
-  // Simplified animation functions
+  // Enhanced animation functions
   const createConfetti = useCallback(() => {
     if (!fairyContainerRef.current) return;
     const container = fairyContainerRef.current;
-    const confettiCount = 30;
-    const emojis = ['🎉', '✨', '🎊', '💖', '🌟', '🥳'];
+    const confettiCount = 50;
+    const emojis = ['🎉', '✨', '🎊', '💖', '🌟', '🥳', '🎈', '🎁', '🦄', '🌈'];
 
     for (let i = 0; i < confettiCount; i++) {
       const confetti = document.createElement('div');
@@ -199,6 +213,36 @@ export default function Countdown() {
       }));
     }, 3000);
   }, [updateState]);
+
+  // Create a magical unicorn
+  const createUnicorn = useCallback(() => {
+    if (!fairyContainerRef.current || unicornModeActivated.current) return;
+    
+    const container = fairyContainerRef.current;
+    const unicorn = document.createElement('div');
+    unicorn.innerHTML = '🦄';
+    unicorn.style.position = 'absolute';
+    unicorn.style.left = '-100px';
+    unicorn.style.top = `${Math.random() * 70 + 15}%`;
+    unicorn.style.fontSize = '60px';
+    unicorn.style.zIndex = '999';
+    unicorn.style.pointerEvents = 'none';
+    unicorn.className = 'unicorn';
+    unicorn.ref = unicornRef;
+    container.appendChild(unicorn);
+
+    gsap.to(unicorn, {
+      duration: 8,
+      x: '120vw',
+      rotation: 360,
+      ease: "power1.inOut",
+      onComplete: () => {
+        if (unicorn.parentNode === container) {
+          container.removeChild(unicorn);
+        }
+      }
+    });
+  }, []);
 
   // SIMPLIFIED EASTER EGGS - Mobile Friendly
 
@@ -269,6 +313,19 @@ export default function Countdown() {
     }
   }, [funnyImages, updateState]);
 
+  // 4. Secret Unicorn Mode (Double tap on progress bar)
+  const handleProgressBarTap = useCallback((event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const currentTime = Date.now();
+    if (currentTime - lastTapTimeRef.current < 500) { // Double tap
+      console.log("🦄 Unicorn mode activated!");
+      activateUnicornMode();
+    }
+    lastTapTimeRef.current = currentTime;
+  }, []);
+
   // Long press detection
   const [pressTimer, setPressTimer] = useState(null);
 
@@ -292,7 +349,7 @@ export default function Countdown() {
   const activateComfortMode = useCallback(() => {
     if (comfortModeActivated.current) return;
     comfortModeActivated.current = true;
-    updateState({ comfortMode: true, dramaticMode: false });
+    updateState({ comfortMode: true, dramaticMode: false, unicornMode: false });
 
     gsap.to("body", {
       duration: 4,
@@ -307,12 +364,19 @@ export default function Countdown() {
       yoyo: true,
       ease: "sine.inOut"
     });
-  }, [updateState]);
+
+    // Add floating hearts
+    for (let i = 0; i < 10; i++) {
+      setTimeout(() => {
+        showFloatingMessage("💖 You're amazing! 💖");
+      }, i * 500);
+    }
+  }, [updateState, showFloatingMessage]);
 
   const activateDramaticMode = useCallback(() => {
     if (dramaticModeActivated.current) return;
     dramaticModeActivated.current = true;
-    updateState({ dramaticMode: true });
+    updateState({ dramaticMode: true, comfortMode: false, unicornMode: false });
 
     gsap.to("body", {
       duration: 3,
@@ -321,7 +385,38 @@ export default function Countdown() {
       yoyo: true,
       ease: "sine.inOut"
     });
+
+    // Add sparkle effects to time units
+    updateState({
+      sparkleUnits: { days: true, hours: true, minutes: true, seconds: true }
+    });
   }, [updateState]);
+
+  const activateUnicornMode = useCallback(() => {
+    if (unicornModeActivated.current) return;
+    unicornModeActivated.current = true;
+    updateState({ unicornMode: true, comfortMode: false, dramaticMode: false });
+
+    gsap.to("body", {
+      duration: 3,
+      background: `linear-gradient(135deg, #ffafbd 0%, #ffc3a0 25%, #ccffbd 50%, #a0c4ff 75%, #bdb2ff 100%)`,
+      ease: "sine.inOut"
+    });
+
+    // Create multiple unicorns
+    for (let i = 0; i < 5; i++) {
+      setTimeout(() => {
+        createUnicorn();
+      }, i * 1000);
+    }
+
+    // Add rainbow messages
+    for (let i = 0; i < 8; i++) {
+      setTimeout(() => {
+        showFloatingMessage(["🌈", "🦄", "✨", "🌟", "🎠", "🧁", "🎀", "🎪"][i]);
+      }, i * 400);
+    }
+  }, [updateState, createUnicorn, showFloatingMessage]);
 
   const getRandomSurprise = useCallback(() => {
     if (funnyImages.length === 0) return { image: "", message: "You're amazing! 😊" };
@@ -491,7 +586,7 @@ export default function Countdown() {
 
   const { 
     timeLeft, isButtonEnabled, showSurprise, currentImage, currentMessage, 
-    magicalMessages, comfortMode, dramaticMode
+    magicalMessages, comfortMode, dramaticMode, unicornMode, sparkleUnits
   } = state;
 
   return (
@@ -499,6 +594,7 @@ export default function Countdown() {
       className={`min-h-screen flex items-center justify-center p-4 transition-all duration-1000 ${
         comfortMode ? 'comfort-mode' :
         dramaticMode ? 'emergency-mode' :
+        unicornMode ? 'unicorn-mode' :
         'bg-gradient-to-br from-pink-400 via-purple-500 to-indigo-600'
       }`}
     >
@@ -515,6 +611,12 @@ export default function Countdown() {
       {dramaticMode && (
         <div className="emergency-alert fixed top-0 left-0 w-full bg-red-600 text-white text-center py-2 font-bold text-lg z-40 animate-pulse">
           🚨 BIRTHDAY COUNTDOWN CRITICAL! {timeLeft.hours}h {timeLeft.minutes}m {timeLeft.seconds}s REMAINING! 🚨
+        </div>
+      )}
+
+      {unicornMode && (
+        <div className="unicorn-alert fixed top-0 left-0 w-full bg-gradient-to-r from-purple-400 to-pink-400 text-white text-center py-2 font-bold text-lg z-40">
+          🦄 UNICORN MAGIC ACTIVATED! 🦄
         </div>
       )}
 
@@ -540,6 +642,7 @@ export default function Countdown() {
           <li>• Triple tap title</li>
           <li>• Shake phone</li>
           <li>• Long press timer</li>
+          <li>• Double tap progress bar</li>
         </ul>
       </div>
 
@@ -551,6 +654,8 @@ export default function Countdown() {
             ? 'bg-white/40 border-white/50 comfort-glow' 
             : dramaticMode 
             ? 'bg-red-500/20 border-red-500/50 emergency-glow'
+            : unicornMode
+            ? 'bg-white/40 border-purple-300/50 unicorn-glow'
             : 'bg-gradient-to-br from-white/20 via-pink-100/20 to-purple-100/20 border-white/30'
         }`}
         onTouchStart={handlePressStart}
@@ -571,6 +676,7 @@ export default function Countdown() {
             <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
               {comfortMode ? 'Almost There! 💫' :
                dramaticMode ? 'EMERGENCY COUNTDOWN!' :
+               unicornMode ? 'UNICORN COUNTDOWN! 🦄' :
                'Birthday Countdown!'}
             </h1>
             <span className="text-3xl">🎁</span>
@@ -580,6 +686,8 @@ export default function Countdown() {
               ? `You're doing amazing! ${timeLeft.minutes}m ${timeLeft.seconds}s to go! 💖` 
               : dramaticMode 
               ? `🚨 CRITICAL: ${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s LEFT! 🚨` 
+              : unicornMode
+              ? `🦄 Magical countdown: ${timeLeft.days}d ${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s! 🦄`
               : "Counting down to November 4th, 2025! Get ready! 🎈"
             }
           </p>
@@ -590,27 +698,46 @@ export default function Countdown() {
 
         {/* Time Units */}
         <div className="flex flex-wrap justify-center gap-3 md:gap-4">
-          {[daysRef, hoursRef, minutesRef, secondsRef].map((ref, index) => (
-            <div key={index}>
-              <TimeUnit 
-                label={["Days", "Hours", "Minutes", "Seconds"][index]}
-                value={[timeLeft.days, timeLeft.hours, timeLeft.minutes, timeLeft.seconds][index]}
-                color={[
-                  "from-purple-500 to-blue-500",
-                  "from-pink-500 to-purple-500", 
-                  "from-indigo-500 to-blue-400",
-                  "from-green-400 to-teal-400"
-                ][index]}
-                unitRef={ref}
-                comfortMode={comfortMode}
-                dramaticMode={dramaticMode}
-              />
-            </div>
-          ))}
+          <TimeUnit 
+            label="Days"
+            value={timeLeft.days}
+            color="from-purple-500 to-blue-500"
+            unitRef={daysRef}
+            comfortMode={comfortMode}
+            dramaticMode={dramaticMode}
+            sparkle={sparkleUnits.days}
+          />
+          <TimeUnit 
+            label="Hours"
+            value={timeLeft.hours}
+            color="from-pink-500 to-purple-500"
+            unitRef={hoursRef}
+            comfortMode={comfortMode}
+            dramaticMode={dramaticMode}
+            sparkle={sparkleUnits.hours}
+          />
+          <TimeUnit 
+            label="Minutes"
+            value={timeLeft.minutes}
+            color="from-indigo-500 to-blue-400"
+            unitRef={minutesRef}
+            comfortMode={comfortMode}
+            dramaticMode={dramaticMode}
+            sparkle={sparkleUnits.minutes}
+          />
+          <TimeUnit 
+            label="Seconds"
+            value={timeLeft.seconds}
+            color="from-green-400 to-teal-400"
+            unitRef={secondsRef}
+            comfortMode={comfortMode}
+            dramaticMode={dramaticMode}
+            sparkle={sparkleUnits.seconds}
+          />
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full max-w-md mt-2">
+        <div className="w-full max-w-md mt-2" onClick={handleProgressBarTap} style={{ touchAction: 'manipulation' }}>
           <div className="flex justify-between text-xs text-white mb-1">
             <span>Excitement Level</span>
             <span>{Math.round(((365 - timeLeft.days) / 365) * 100)}%</span>
@@ -622,6 +749,8 @@ export default function Countdown() {
                   ? 'bg-gradient-to-r from-pink-400 to-blue-400' 
                   : dramaticMode 
                   ? 'bg-gradient-to-r from-red-500 via-yellow-500 to-red-500 animate-pulse'
+                  : unicornMode
+                  ? 'bg-gradient-to-r from-purple-400 to-pink-400 rainbow-animation'
                   : 'bg-gradient-to-r from-pink-500 to-purple-500'
               }`}
               style={{
@@ -643,12 +772,15 @@ export default function Countdown() {
                 ? 'bg-gradient-to-r from-pink-400 to-blue-400 text-white cursor-pointer hover:scale-105 comfort-glow'
                 : dramaticMode
                 ? 'bg-red-500 text-white cursor-pointer hover:scale-105 animate-pulse'
+                : unicornMode
+                ? 'bg-gradient-to-r from-purple-400 to-pink-400 text-white cursor-pointer hover:scale-105 unicorn-glow'
                 : 'bg-white/30 text-white cursor-pointer hover:scale-105'
             }`}
             style={{ touchAction: 'manipulation' }}
           >
             {comfortMode ? '💖 You Are Amazing! 💖' : 
              dramaticMode ? '🚨 GET READY! 🚨' : 
+             unicornMode ? '🦄 Magical Surprise! 🦄' :
              isButtonEnabled ? 'View Surprises!' : 'Get Random Surprise!'}
           </button>
 
@@ -666,7 +798,7 @@ export default function Countdown() {
         </div>
 
         {/* Easter Egg Hint */}
-        {!isButtonEnabled && !dramaticMode && !comfortMode && (
+        {!isButtonEnabled && !dramaticMode && !comfortMode && !unicornMode && (
           <div className="text-center p-3 bg-white/10 rounded-xl backdrop-blur-sm max-w-md">
             <p className="text-white text-sm italic">
               Try triple-tapping the title or shaking your phone! 🎉
@@ -681,6 +813,8 @@ export default function Countdown() {
               ? `You're handling the wait like a champion! 💫` 
               : dramaticMode
               ? `🚨 ALERT: ${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s REMAINING! 🚨`
+              : unicornMode
+              ? `🦄 Magic is building! ${timeLeft.days} days until your special day! 🦄`
               : isButtonEnabled 
               ? "🎉 IT'S YOUR BIRTHDAY! Click to celebrate! 🎉" 
               : `Only ${timeLeft.days} days until November 4th, 2025! 🎈`
@@ -690,7 +824,7 @@ export default function Countdown() {
 
         {/* Floating Elements */}
         <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
-          {[...Array(comfortMode ? 15 : dramaticMode ? 20 : 12)].map((_, i) => (
+          {[...Array(comfortMode ? 15 : dramaticMode ? 20 : unicornMode ? 25 : 12)].map((_, i) => (
             <div
               key={i}
               className="floating-element absolute text-lg opacity-50"
@@ -698,14 +832,16 @@ export default function Countdown() {
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
                 animationDelay: `${Math.random() * 2}s`,
-                fontSize: comfortMode ? '1.2rem' : dramaticMode ? '1.5rem' : '1rem',
-                opacity: comfortMode ? 0.6 : dramaticMode ? 0.8 : 0.5
+                fontSize: comfortMode ? '1.2rem' : dramaticMode ? '1.5rem' : unicornMode ? '1.8rem' : '1rem',
+                opacity: comfortMode ? 0.6 : dramaticMode ? 0.8 : unicornMode ? 0.7 : 0.5
               }}
             >
               {comfortMode 
                 ? ['💖', '⭐', '✨', '🌟', '🎀'][i % 5]
                 : dramaticMode 
                 ? ['🚨', '⚠️', '💥', '🎊', '🔥', '⚡'][i % 6]
+                : unicornMode
+                ? ['🦄', '🌈', '✨', '🌟', '🎠', '🧁'][i % 6]
                 : ['🎈', '🎂', '🎁', '⭐'][i % 4]
               }
             </div>
@@ -797,6 +933,19 @@ export default function Countdown() {
           50% { box-shadow: 0 0 50px rgba(135, 206, 235, 0.5); }
         }
         
+        @keyframes unicorn-glow {
+          0%, 100% { box-shadow: 0 0 20px rgba(255, 105, 180, 0.7); }
+          25% { box-shadow: 0 0 30px rgba(147, 112, 219, 0.7); }
+          50% { box-shadow: 0 0 40px rgba(123, 104, 238, 0.7); }
+          75% { box-shadow: 0 0 30px rgba(186, 85, 211, 0.7); }
+        }
+        
+        @keyframes rainbow-animation {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        
         @keyframes confetti-fall {
           0% { transform: translateY(0) rotate(0deg); opacity: 0; }
           50% { opacity: 1; }
@@ -819,6 +968,10 @@ export default function Countdown() {
           animation: comfort-glow 2s ease-in-out infinite;
         }
         
+        .unicorn-glow {
+          animation: unicorn-glow 3s ease-in-out infinite;
+        }
+        
         .emergency-alert {
           animation: emergency-pulse 0.5s ease-in-out infinite;
         }
@@ -833,6 +986,16 @@ export default function Countdown() {
         
         .magical-message {
           animation: float 3s ease-in-out infinite;
+        }
+        
+        .rainbow-animation {
+          background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
+          background-size: 400% 400%;
+          animation: rainbow-animation 3s ease infinite;
+        }
+        
+        .unicorn {
+          animation: float 2s ease-in-out infinite;
         }
       `}</style>
     </div>
