@@ -1,16 +1,19 @@
-// App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Countdown from './pages/Countdown';
-import BirthdaySpecial from './pages/BirthdaySpecial'; // Adjust path as needed
+import CountdownTimer from "./pages/Countdown"
+import BirthdaySpecial from './pages/BirthdaySpecial';
+import PhotoGallery from './pages/PhotoGallery';
 
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<Countdown />} />
-        <Route path="/birthday-special" element={<BirthdaySpecial />} />
-      </Routes>
+      <div className="App">
+        <Routes>
+          <Route path="/" element={<CountdownTimer />} />
+          <Route path="/birthday-special" element={<BirthdaySpecial />} />
+          <Route path="/gallery" element={<PhotoGallery />} />
+        </Routes>
+      </div>
     </Router>
   );
 }
