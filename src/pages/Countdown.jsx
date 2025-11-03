@@ -33,13 +33,13 @@ const TimeUnit = React.memo(({ label, value, color, unitRef, comfortMode, dramat
         border: comfortMode 
           ? '2px solid rgba(255, 255, 255, 0.5)' 
           : dramaticMode 
-          ? '3px solid white' 
+          ? '2px solid rgba(255, 255, 0, 0.3)' 
           : '1px solid rgba(255, 255, 255, 0.2)'
       }}
     >
-      {/* Sparkle effect */}
+      {/* Subtle sparkle effect */}
       {sparkle && (
-        <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-300 rounded-full animate-ping opacity-70"></div>
+        <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-300 rounded-full opacity-60"></div>
       )}
       
       <div 
@@ -64,13 +64,13 @@ const TimeUnit = React.memo(({ label, value, color, unitRef, comfortMode, dramat
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
-            textShadow: comfortMode ? '0 2px 4px rgba(0,0,0,0.1)' : dramaticMode ? '0 0 10px #ffff00' : 'none'
+            textShadow: dramaticMode ? '0 0 8px rgba(255,255,0,0.3)' : 'none'
           }}
         >
           {value.toString().padStart(2, '0')}
         </div>
         <div className={`text-xs font-medium uppercase tracking-wider ${
-          comfortMode ? 'text-pink-600' : dramaticMode ? 'text-white' : 'text-gray-300'
+          comfortMode ? 'text-pink-600' : dramaticMode ? 'text-yellow-300' : 'text-gray-300'
         }`}>
           {label}
         </div>
@@ -165,12 +165,12 @@ export default function Countdown() {
   const isLastHour = useCallback((timeLeft) => 
     timeLeft.days === 0 && timeLeft.hours === 0 && timeLeft.minutes < 60, []);
 
-  // Enhanced animation functions
+  // Enhanced animation functions - more subtle
   const createConfetti = useCallback(() => {
     if (!fairyContainerRef.current) return;
     const container = fairyContainerRef.current;
-    const confettiCount = 50;
-    const emojis = ['🎉', '✨', '🎊', '💖', '🌟', '🥳', '🎈', '🎁', '🦄', '🌈'];
+    const confettiCount = 30; // Reduced from 50
+    const emojis = ['✨', '🌟', '💖', '🎉', '🎊'];
 
     for (let i = 0; i < confettiCount; i++) {
       const confetti = document.createElement('div');
@@ -178,7 +178,7 @@ export default function Countdown() {
       confetti.style.position = 'absolute';
       confetti.style.left = `${Math.random() * 100}%`;
       confetti.style.top = `${Math.random() * 100}%`;
-      confetti.style.fontSize = `${Math.random() * 20 + 15}px`;
+      confetti.style.fontSize = `${Math.random() * 15 + 12}px`; // Smaller
       confetti.style.opacity = '0';
       confetti.style.zIndex = '1000';
       confetti.style.pointerEvents = 'none';
@@ -186,11 +186,11 @@ export default function Countdown() {
       container.appendChild(confetti);
 
       gsap.to(confetti, {
-        duration: Math.random() * 2 + 1,
-        y: -200,
-        x: Math.random() * 200 - 100,
-        rotation: Math.random() * 720,
-        opacity: 1,
+        duration: Math.random() * 1.5 + 1, // Shorter duration
+        y: -150, // Less movement
+        x: Math.random() * 100 - 50,
+        rotation: Math.random() * 360,
+        opacity: 0.8, // Less opaque
         ease: "power1.out",
         onComplete: () => {
           if (confetti.parentNode === container) {
@@ -229,17 +229,18 @@ export default function Countdown() {
     unicorn.style.position = 'absolute';
     unicorn.style.left = '-100px';
     unicorn.style.top = `${Math.random() * 70 + 15}%`;
-    unicorn.style.fontSize = '60px';
+    unicorn.style.fontSize = '50px'; // Smaller
     unicorn.style.zIndex = '999';
     unicorn.style.pointerEvents = 'none';
+    unicorn.style.opacity = '0.8'; // More subtle
     unicorn.className = 'unicorn';
     unicorn.ref = unicornRef;
     container.appendChild(unicorn);
 
     gsap.to(unicorn, {
-      duration: 8,
+      duration: 10, // Slower
       x: '120vw',
-      rotation: 360,
+      rotation: 180, // Less rotation
       ease: "power1.inOut",
       onComplete: () => {
         if (unicorn.parentNode === container) {
@@ -271,14 +272,14 @@ export default function Countdown() {
     if (state.tapCount >= 2) {
       console.log("🎉 Title triple tap easter egg!");
       createConfetti();
-      showFloatingMessage("Triple tap magic! ✨ You found an easter egg!");
+      showFloatingMessage("Triple tap magic! ✨");
       updateState({ tapCount: 0 });
       
       gsap.to(".timer-container", {
-        duration: 0.5,
-        scale: 1.1,
+        duration: 0.3, // Shorter
+        scale: 1.05, // Less scale
         yoyo: true,
-        repeat: 2,
+        repeat: 1, // Less repeats
         ease: "elastic.out(1, 0.5)"
       });
     }
@@ -296,10 +297,10 @@ export default function Countdown() {
     showFloatingMessage("Whoa! Shake it! 📱✨");
     
     gsap.to(".time-unit", {
-      duration: 0.3,
-      rotation: 5,
+      duration: 0.2, // Shorter
+      rotation: 3, // Less rotation
       yoyo: true,
-      repeat: 3,
+      repeat: 2, // Less repeats
       ease: "sine.inOut"
     });
   }, [createConfetti, showFloatingMessage]);
@@ -364,14 +365,14 @@ export default function Countdown() {
     
     updateState({ 
       currentImage: randomImage,
-      currentMessage: "Long press magic! 🎩✨ Secret surprise!",
+      currentMessage: "Long press magic! 🎩✨",
       showSurprise: true
     });
     
     if (surpriseModalRef.current) {
       gsap.fromTo(surpriseModalRef.current, 
         { scale: 0, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 0.8, ease: "back.out(1.7)" }
+        { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(1.7)" } // Shorter
       );
     }
   }, [funnyImages, updateState]);
@@ -413,31 +414,31 @@ export default function Countdown() {
     lastTapTimeRef.current = currentTime;
   }, []);
 
-  // Mode functions
+  // Mode functions - more subtle dramatic mode
   const activateComfortMode = useCallback(() => {
     if (comfortModeActivated.current) return;
     comfortModeActivated.current = true;
     updateState({ comfortMode: true, dramaticMode: false, unicornMode: false });
 
     gsap.to("body", {
-      duration: 4,
-      background: `linear-gradient(135deg, #ffb6c1 0%, #ffd1dc 25%, #e6e6fa 50%, #d8bfd8 75%, #b19cd9 100%)`,
+      duration: 3, // Shorter
+      background: `linear-gradient(135deg, #ffb6c1 0%, #ffd1dc 50%, #e6e6fa 100%)`, // Simpler gradient
       ease: "sine.inOut"
     });
 
     gsap.to(timerRef.current, {
-      duration: 3,
-      y: -10,
+      duration: 4, // Slower
+      y: -5, // Less movement
       repeat: -1,
       yoyo: true,
       ease: "sine.inOut"
     });
 
-    // Add floating hearts
-    for (let i = 0; i < 10; i++) {
+    // Add floating hearts - fewer
+    for (let i = 0; i < 6; i++) {
       setTimeout(() => {
-        showFloatingMessage("💖 You're amazing! 💖");
-      }, i * 500);
+        showFloatingMessage("💖");
+      }, i * 600);
     }
   }, [updateState, showFloatingMessage]);
 
@@ -446,17 +447,25 @@ export default function Countdown() {
     dramaticModeActivated.current = true;
     updateState({ dramaticMode: true, comfortMode: false, unicornMode: false });
 
+    // More subtle background animation
     gsap.to("body", {
-      duration: 3,
-      background: `linear-gradient(45deg, #ff6b6b 0%, #4ecdc4 25%, #45b7d1 50%, #96ceb4 75%, #ffeaa7 100%)`,
-      repeat: -1,
-      yoyo: true,
-      ease: "sine.inOut"
+      duration: 4,
+      background: `linear-gradient(45deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)`, // Darker, more dramatic
+      ease: "power2.inOut"
     });
 
-    // Add sparkle effects to time units
+    // Add subtle sparkle effects to time units
     updateState({
       sparkleUnits: { days: true, hours: true, minutes: true, seconds: true }
+    });
+
+    // Subtle pulse effect instead of flashy animation
+    gsap.to(timerRef.current, {
+      duration: 2,
+      scale: 1.02,
+      yoyo: true,
+      repeat: -1,
+      ease: "sine.inOut"
     });
   }, [updateState]);
 
@@ -467,22 +476,22 @@ export default function Countdown() {
 
     gsap.to("body", {
       duration: 3,
-      background: `linear-gradient(135deg, #ffafbd 0%, #ffc3a0 25%, #ccffbd 50%, #a0c4ff 75%, #bdb2ff 100%)`,
+      background: `linear-gradient(135deg, #ffafbd 0%, #ffc3a0 50%, #a0c4ff 100%)`, // Simpler gradient
       ease: "sine.inOut"
     });
 
-    // Create multiple unicorns
-    for (let i = 0; i < 5; i++) {
+    // Create fewer unicorns
+    for (let i = 0; i < 3; i++) {
       setTimeout(() => {
         createUnicorn();
-      }, i * 1000);
+      }, i * 1500);
     }
 
-    // Add rainbow messages
-    for (let i = 0; i < 8; i++) {
+    // Add fewer messages
+    for (let i = 0; i < 4; i++) {
       setTimeout(() => {
-        showFloatingMessage(["🌈", "🦄", "✨", "🌟", "🎠", "🧁", "🎀", "🎪"][i]);
-      }, i * 400);
+        showFloatingMessage(["🌈", "🦄", "✨", "🌟"][i]);
+      }, i * 600);
     }
   }, [updateState, createUnicorn, showFloatingMessage]);
 
@@ -521,7 +530,7 @@ export default function Countdown() {
     if (surpriseModalRef.current) {
       gsap.fromTo(surpriseModalRef.current, 
         { scale: 0, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 0.8, ease: "back.out(1.7)" }
+        { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(1.7)" } // Shorter
       );
     }
   }, [state.isButtonEnabled, getRandomSurprise, redirectToBirthdayPage, updateState]);
@@ -594,27 +603,29 @@ export default function Countdown() {
   useEffect(() => {
     if (state.isButtonEnabled) {
       createConfetti();
+      
+      // More subtle celebration background
       gsap.to("body", {
-        duration: 3,
-        background: "linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #ffeaa7, #ff6b6b)",
-        repeat: -1,
-        yoyo: true
+        duration: 4,
+        background: "linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1)",
+        ease: "sine.inOut"
       });
 
+      // More subtle time unit animation
       gsap.to(".time-unit", {
-        duration: 1,
-        scale: 1.3,
-        rotation: 360,
-        stagger: 0.1,
-        repeat: -1,
+        duration: 1.5,
+        scale: 1.1, // Less scale
+        rotation: 180, // Less rotation
+        stagger: 0.2,
+        repeat: 1, // Less repeats
         yoyo: true
       });
       
       gsap.to(timerRef.current, {
-        scale: 1.1,
-        duration: 0.8,
+        scale: 1.05, // Less scale
+        duration: 1,
         yoyo: true,
-        repeat: -1,
+        repeat: 1, // Less repeats
         ease: "sine.inOut"
       });
 
@@ -622,10 +633,10 @@ export default function Countdown() {
         if (birthdayButtonRef.current) {
           gsap.fromTo(birthdayButtonRef.current,
             { opacity: 0, scale: 0, y: 50 },
-            { opacity: 1, scale: 1, y: 0, duration: 1.5, ease: "back.out(1.7)" }
+            { opacity: 1, scale: 1, y: 0, duration: 1, ease: "back.out(1.7)" } // Shorter
           );
         }
-      }, 1000);
+      }, 500);
     }
   }, [state.isButtonEnabled, createConfetti]);
 
@@ -638,7 +649,7 @@ export default function Countdown() {
     <div 
       className={`min-h-screen flex items-center justify-center p-4 transition-all duration-1000 ${
         comfortMode ? 'comfort-mode' :
-        dramaticMode ? 'emergency-mode' :
+        dramaticMode ? 'dramatic-mode' : // Changed from emergency-mode
         unicornMode ? 'unicorn-mode' :
         'bg-gradient-to-br from-pink-400 via-purple-500 to-indigo-600'
       }`}
@@ -646,22 +657,22 @@ export default function Countdown() {
       {/* Animation Container */}
       <div ref={fairyContainerRef} className="fixed inset-0 pointer-events-none z-50" />
 
-      {/* Mode Alerts */}
+      {/* Mode Alerts - More subtle */}
       {comfortMode && (
-        <div className="comfort-alert fixed top-0 left-0 w-full bg-gradient-to-r from-pink-400 to-blue-400 text-white text-center py-3 font-bold text-lg z-40">
-          💖 You're Amazing! {timeLeft.minutes}m {timeLeft.seconds}s Until Your Special Day! 💖
+        <div className="comfort-alert fixed top-0 left-0 w-full bg-gradient-to-r from-pink-400 to-blue-400 text-white text-center py-2 font-semibold text-sm z-40">
+          💖 Almost There! {timeLeft.minutes}m {timeLeft.seconds}s To Go! 💖
         </div>
       )}
 
       {dramaticMode && (
-        <div className="emergency-alert fixed top-0 left-0 w-full bg-red-600 text-white text-center py-2 font-bold text-lg z-40 animate-pulse">
-          🚨 BIRTHDAY COUNTDOWN CRITICAL! {timeLeft.hours}h {timeLeft.minutes}m {timeLeft.seconds}s REMAINING! 🚨
+        <div className="dramatic-alert fixed top-0 left-0 w-full bg-gradient-to-r from-yellow-600 to-red-600 text-white text-center py-2 font-semibold text-sm z-40">
+          ⚡ {timeLeft.hours}h {timeLeft.minutes}m {timeLeft.seconds}s Until Birthday! ⚡
         </div>
       )}
 
       {unicornMode && (
-        <div className="unicorn-alert fixed top-0 left-0 w-full bg-gradient-to-r from-purple-400 to-pink-400 text-white text-center py-2 font-bold text-lg z-40">
-          🦄 UNICORN MAGIC ACTIVATED! 🦄
+        <div className="unicorn-alert fixed top-0 left-0 w-full bg-gradient-to-r from-purple-400 to-pink-400 text-white text-center py-2 font-semibold text-sm z-40">
+          🦄 Magical Countdown Activated! 🦄
         </div>
       )}
 
@@ -669,7 +680,7 @@ export default function Countdown() {
       {magicalMessages.map(message => (
         <div
           key={message.id}
-          className="magical-message fixed text-white text-lg font-bold text-center bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full border border-white/30 z-30 shadow-lg"
+          className="magical-message fixed text-white text-base font-semibold text-center bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20 z-30 shadow-lg"
           style={{
             top: message.top,
             left: message.left,
@@ -681,13 +692,12 @@ export default function Countdown() {
       ))}
 
       {/* Simple Easter Egg Hint */}
-      <div className="fixed bottom-4 left-4 bg-black/70 text-white px-4 py-3 rounded-lg text-sm max-w-xs z-30">
-        <p className="font-bold mb-2">🎮 Mobile Easter Eggs:</p>
-        <ul className="text-xs space-y-1">
+      <div className="fixed bottom-4 left-4 bg-black/50 text-white px-3 py-2 rounded-lg text-xs max-w-xs z-30">
+        <p className="font-bold mb-1">🎮 Mobile Easter Eggs:</p>
+        <ul className="space-y-0.5">
           <li>• Triple tap title</li>
-          <li>• Shake phone firmly</li>
-          <li>• Long press timer (hold)</li>
-          <li>• Double tap progress bar</li>
+          <li>• Shake phone</li>
+          <li>• Long press timer</li>
         </ul>
       </div>
 
@@ -696,11 +706,11 @@ export default function Countdown() {
         ref={timerRef}
         className={`timer-container relative w-full max-w-2xl mx-auto flex flex-col items-center justify-center space-y-6 md:space-y-8 rounded-2xl p-6 md:p-8 shadow-xl border backdrop-blur-lg ${
           comfortMode 
-            ? 'bg-white/40 border-white/50 comfort-glow' 
+            ? 'bg-white/30 border-white/40' 
             : dramaticMode 
-            ? 'bg-red-500/20 border-red-500/50 emergency-glow'
+            ? 'bg-gray-900/40 border-yellow-500/30 dramatic-glow'
             : unicornMode
-            ? 'bg-white/40 border-purple-300/50 unicorn-glow'
+            ? 'bg-white/30 border-purple-300/40'
             : 'bg-gradient-to-br from-white/20 via-pink-100/20 to-purple-100/20 border-white/30'
         }`}
         onTouchStart={handlePressStart}
@@ -721,8 +731,8 @@ export default function Countdown() {
             <span className="text-3xl">🎂</span>
             <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent select-none">
               {comfortMode ? 'Almost There! 💫' :
-               dramaticMode ? 'EMERGENCY COUNTDOWN!' :
-               unicornMode ? 'UNICORN COUNTDOWN! 🦄' :
+               dramaticMode ? 'Final Countdown!' : // Less dramatic
+               unicornMode ? 'Magical Countdown 🦄' :
                'Birthday Countdown!'}
             </h1>
             <span className="text-3xl">🎁</span>
@@ -731,10 +741,10 @@ export default function Countdown() {
             {comfortMode 
               ? `You're doing amazing! ${timeLeft.minutes}m ${timeLeft.seconds}s to go! 💖` 
               : dramaticMode 
-              ? `🚨 CRITICAL: ${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s LEFT! 🚨` 
+              ? `⚡ ${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s left! ⚡` 
               : unicornMode
-              ? `🦄 Magical countdown: ${timeLeft.days}d ${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s! 🦄`
-              : "Counting down to November 4th, 2025! Get ready! 🎈"
+              ? `🦄 ${timeLeft.days}d ${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s! 🦄`
+              : "Counting down to November 4th, 2025! 🎈"
             }
           </p>
           <p className="text-pink-200 text-sm md:text-base">
@@ -798,9 +808,9 @@ export default function Countdown() {
                 comfortMode 
                   ? 'bg-gradient-to-r from-pink-400 to-blue-400' 
                   : dramaticMode 
-                  ? 'bg-gradient-to-r from-red-500 via-yellow-500 to-red-500 animate-pulse'
+                  ? 'bg-gradient-to-r from-yellow-400 to-red-500'
                   : unicornMode
-                  ? 'bg-gradient-to-r from-purple-400 to-pink-400 rainbow-animation'
+                  ? 'bg-gradient-to-r from-purple-400 to-pink-400'
                   : 'bg-gradient-to-r from-pink-500 to-purple-500'
               }`}
               style={{
@@ -819,17 +829,17 @@ export default function Countdown() {
               isButtonEnabled 
                 ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:scale-105 cursor-pointer' 
                 : comfortMode
-                ? 'bg-gradient-to-r from-pink-400 to-blue-400 text-white cursor-pointer hover:scale-105 comfort-glow'
+                ? 'bg-gradient-to-r from-pink-400 to-blue-400 text-white cursor-pointer hover:scale-105'
                 : dramaticMode
-                ? 'bg-red-500 text-white cursor-pointer hover:scale-105 animate-pulse'
+                ? 'bg-gradient-to-r from-yellow-500 to-red-500 text-white cursor-pointer hover:scale-105'
                 : unicornMode
-                ? 'bg-gradient-to-r from-purple-400 to-pink-400 text-white cursor-pointer hover:scale-105 unicorn-glow'
+                ? 'bg-gradient-to-r from-purple-400 to-pink-400 text-white cursor-pointer hover:scale-105'
                 : 'bg-white/30 text-white cursor-pointer hover:scale-105'
             }`}
             style={{ touchAction: 'manipulation', userSelect: 'none' }}
           >
             {comfortMode ? '💖 You Are Amazing! 💖' : 
-             dramaticMode ? '🚨 GET READY! 🚨' : 
+             dramaticMode ? '⚡ Final Stretch! ⚡' : 
              unicornMode ? '🦄 Magical Surprise! 🦄' :
              isButtonEnabled ? 'View Surprises!' : 'Get Random Surprise!'}
           </button>
@@ -842,19 +852,10 @@ export default function Countdown() {
               className="birthday-special-btn w-full px-5 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-lg font-bold shadow-lg transform hover:scale-105 transition-all duration-300 hover:shadow-xl border-2 border-yellow-300 select-none"
               style={{ touchAction: 'manipulation', userSelect: 'none' }}
             >
-              🎊 Enter Birthday Wonderland! 🎊
+              🎊 Enter Birthday Celebration! 🎊
             </button>
           )}
         </div>
-
-        {/* Easter Egg Hint */}
-        {!isButtonEnabled && !dramaticMode && !comfortMode && !unicornMode && (
-          <div className="text-center p-3 bg-white/10 rounded-xl backdrop-blur-sm max-w-md">
-            <p className="text-white text-sm italic">
-              Try triple-tapping the title or shaking your phone! 🎉
-            </p>
-          </div>
-        )}
 
         {/* Status Message */}
         <div className="text-center p-3 bg-white/10 rounded-xl backdrop-blur-sm">
@@ -862,7 +863,7 @@ export default function Countdown() {
             {comfortMode 
               ? `You're handling the wait like a champion! 💫` 
               : dramaticMode
-              ? `🚨 ALERT: ${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s REMAINING! 🚨`
+              ? `⚡ ${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s remaining! ⚡`
               : unicornMode
               ? `🦄 Magic is building! ${timeLeft.days} days until your special day! 🦄`
               : isButtonEnabled 
@@ -872,27 +873,25 @@ export default function Countdown() {
           </p>
         </div>
 
-        {/* Floating Elements */}
+        {/* Floating Elements - Fewer and more subtle */}
         <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
-          {[...Array(comfortMode ? 15 : dramaticMode ? 20 : unicornMode ? 25 : 12)].map((_, i) => (
+          {[...Array(comfortMode ? 8 : dramaticMode ? 10 : unicornMode ? 12 : 6)].map((_, i) => (
             <div
               key={i}
-              className="floating-element absolute text-lg opacity-50"
+              className="floating-element absolute text-base opacity-40" // Smaller, more transparent
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 2}s`,
-                fontSize: comfortMode ? '1.2rem' : dramaticMode ? '1.5rem' : unicornMode ? '1.8rem' : '1rem',
-                opacity: comfortMode ? 0.6 : dramaticMode ? 0.8 : unicornMode ? 0.7 : 0.5
+                animationDelay: `${Math.random() * 3}s`, // Slower
               }}
             >
               {comfortMode 
-                ? ['💖', '⭐', '✨', '🌟', '🎀'][i % 5]
+                ? ['💖', '⭐', '✨'][i % 3]
                 : dramaticMode 
-                ? ['🚨', '⚠️', '💥', '🎊', '🔥', '⚡'][i % 6]
+                ? ['⚡', '🌟', '🎯'][i % 3]
                 : unicornMode
-                ? ['🦄', '🌈', '✨', '🌟', '🎠', '🧁'][i % 6]
-                : ['🎈', '🎂', '🎁', '⭐'][i % 4]
+                ? ['🦄', '🌈', '✨'][i % 3]
+                : ['🎈', '🎂', '🎁'][i % 3]
               }
             </div>
           ))}
@@ -902,7 +901,7 @@ export default function Countdown() {
       {/* SURPRISE MODAL */}
       {showSurprise && (
         <div 
-          className="fixed inset-0 bg-black/95 flex flex-col items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/80 flex flex-col items-center justify-center z-50 p-4" // Less opaque
           style={{ touchAction: 'manipulation' }}
         >
           <div 
@@ -910,7 +909,7 @@ export default function Countdown() {
             className="w-full h-full flex flex-col items-center justify-center max-w-4xl mx-auto"
           >
             <div className="text-center mb-4 md:mb-6 px-4">
-              <h3 className="text-xl md:text-3xl font-bold text-white mb-2">
+              <h3 className="text-xl md:text-2xl font-bold text-white mb-2"> {/* Smaller */}
                 {isButtonEnabled ? "Happy Birthday! 🎉" : currentMessage}
               </h3>
             </div>
@@ -920,17 +919,17 @@ export default function Countdown() {
                 <img 
                   src={currentImage} 
                   alt="Funny surprise" 
-                  className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-xl" // Smaller shadow
                 />
               ) : (
                 <div className="w-full h-48 flex items-center justify-center bg-gradient-to-br from-pink-200 to-purple-200 rounded-lg">
-                  <p className="text-gray-600 font-bold text-xl">🎁 Loading surprise... 🎁</p>
+                  <p className="text-gray-600 font-bold text-lg">🎁 Loading... 🎁</p> {/* Smaller */}
                 </div>
               )}
             </div>
 
             <div className="text-center my-4 md:my-6 px-4">
-              <p className="text-white text-base md:text-lg">
+              <p className="text-white text-sm md:text-base"> {/* Smaller */}
                 {isButtonEnabled 
                   ? "Ready for your birthday adventure?" 
                   : "Found a secret surprise! 😄"
@@ -942,7 +941,7 @@ export default function Countdown() {
               <button 
                 onClick={isButtonEnabled ? redirectToBirthdayPage : closeSurpriseModal}
                 type="button"
-                className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-xl font-bold text-base md:text-lg hover:scale-105 transition-transform min-h-[50px] flex items-center justify-center"
+                className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-xl font-semibold text-base hover:scale-105 transition-transform min-h-[50px] flex items-center justify-center" // Smaller font
                 style={{ touchAction: 'manipulation' }}
               >
                 {isButtonEnabled ? "Let's Go! 🎊" : "Close"}
@@ -951,7 +950,7 @@ export default function Countdown() {
                 <button 
                   onClick={redirectToBirthdayPage}
                   type="button"
-                  className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-xl font-bold text-base md:text-lg hover:scale-105 transition-transform min-h-[50px] flex items-center justify-center"
+                  className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-xl font-semibold text-base hover:scale-105 transition-transform min-h-[50px] flex items-center justify-center" // Smaller font
                   style={{ touchAction: 'manipulation' }}
                 >
                   Special Page ✨
@@ -965,87 +964,60 @@ export default function Countdown() {
       <style>{`
         @keyframes float {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-10px) rotate(5deg); }
+          50% { transform: translateY(-8px) rotate(3deg); } // Less movement
         }
         
-        @keyframes emergency-pulse {
+        @keyframes dramatic-pulse {
           0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.05); opacity: 0.8; }
+          50% { transform: scale(1.01); opacity: 0.9; } // Very subtle
         }
         
-        @keyframes emergency-glow {
-          0%, 100% { box-shadow: 0 0 20px red; }
-          50% { box-shadow: 0 0 40px yellow, 0 0 60px red; }
+        @keyframes dramatic-glow {
+          0%, 100% { box-shadow: 0 0 15px rgba(255, 255, 0, 0.3); }
+          50% { box-shadow: 0 0 25px rgba(255, 255, 0, 0.5); } // More subtle
         }
         
         @keyframes comfort-glow {
-          0%, 100% { box-shadow: 0 0 30px rgba(255, 182, 193, 0.5); }
-          50% { box-shadow: 0 0 50px rgba(135, 206, 235, 0.5); }
-        }
-        
-        @keyframes unicorn-glow {
-          0%, 100% { box-shadow: 0 0 20px rgba(255, 105, 180, 0.7); }
-          25% { box-shadow: 0 0 30px rgba(147, 112, 219, 0.7); }
-          50% { box-shadow: 0 0 40px rgba(123, 104, 238, 0.7); }
-          75% { box-shadow: 0 0 30px rgba(186, 85, 211, 0.7); }
-        }
-        
-        @keyframes rainbow-animation {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
+          0%, 100% { box-shadow: 0 0 20px rgba(255, 182, 193, 0.3); }
+          50% { box-shadow: 0 0 30px rgba(135, 206, 235, 0.3); }
         }
         
         @keyframes confetti-fall {
           0% { transform: translateY(0) rotate(0deg); opacity: 0; }
-          50% { opacity: 1; }
-          100% { transform: translateY(-200px) rotate(720deg); opacity: 0; }
+          50% { opacity: 0.7; } // Less opaque
+          100% { transform: translateY(-150px) rotate(360deg); opacity: 0; } // Less movement
         }
         
         .floating-element {
-          animation: float 3s ease-in-out infinite;
+          animation: float 4s ease-in-out infinite; // Slower
         }
         
-        .emergency-mode {
-          animation: emergency-pulse 1s ease-in-out infinite;
+        .dramatic-mode {
+          animation: dramatic-pulse 3s ease-in-out infinite; // Slower
         }
         
-        .emergency-glow {
-          animation: emergency-glow 2s ease-in-out infinite;
+        .dramatic-glow {
+          animation: dramatic-glow 3s ease-in-out infinite; // Slower
         }
         
         .comfort-glow {
-          animation: comfort-glow 2s ease-in-out infinite;
+          animation: comfort-glow 3s ease-in-out infinite; // Slower
         }
         
-        .unicorn-glow {
-          animation: unicorn-glow 3s ease-in-out infinite;
-        }
-        
-        .emergency-alert {
-          animation: emergency-pulse 0.5s ease-in-out infinite;
+        .dramatic-alert {
+          animation: dramatic-pulse 2s ease-in-out infinite; // Slower
         }
         
         .comfort-alert {
-          animation: comfort-glow 2s ease-in-out infinite;
+          animation: comfort-glow 3s ease-in-out infinite; // Slower
         }
         
         .confetti {
-          animation: confetti-fall 2s ease-out forwards;
+          animation: confetti-fall 1.5s ease-out forwards; // Shorter
         }
         
         .magical-message {
-          animation: float 3s ease-in-out infinite;
-        }
-        
-        .rainbow-animation {
-          background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
-          background-size: 400% 400%;
-          animation: rainbow-animation 3s ease infinite;
-        }
-        
-        .unicorn {
-          animation: float 2s ease-in-out infinite;
+          animation: float 4s ease-in-out infinite; // Slower
         }
         
         /* Prevent blue highlight on mobile taps */
